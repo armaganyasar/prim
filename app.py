@@ -950,13 +950,17 @@ def prim_ozet_yazdir(prim_id):
             'tahsilat': detay.get('tahsilat_detaylari'),
             'laboratuvar_giderleri': detay.get('laboratuvar_giderleri', []),
             'implant_giderleri': detay.get('implant_giderleri', []),
-            'diger_giderler': detay.get('diger_giderler', [])
+            'diger_giderler': detay.get('diger_giderler', []),
+            'net_ciro_eklemeleri': detay.get('net_ciro_eklemeleri', []),  # YENİ
+            'hakedis_eklemeleri': detay.get('hakedis_eklemeleri', [])      # YENİ
         }
         
         logger.info(f"Yazdırma için veri hazırlandı - Prim ID: {prim_id}")
         logger.info(f"Lab gider sayısı: {len(detay_for_template['laboratuvar_giderleri'])}")
         logger.info(f"İmplant gider sayısı: {len(detay_for_template['implant_giderleri'])}")
         logger.info(f"Diğer gider sayısı: {len(detay_for_template['diger_giderler'])}")
+        logger.info(f"Net Ciro sayısı: {len(detay_for_template['net_ciro_eklemeleri'])}")  # YENİ
+        logger.info(f"Hak Ediş sayısı: {len(detay_for_template['hakedis_eklemeleri'])}")    # YENİ
         
         return render_template("prim_ozet_yazdir.html", detay=detay_for_template)
         

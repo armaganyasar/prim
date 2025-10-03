@@ -331,8 +331,6 @@ function displayPrimDetail(detay) {
     const laboratuvarGiderleri = detay.laboratuvar_giderleri || [];
     const implantGiderleri = detay.implant_giderleri || [];
     const digerGiderler = detay.diger_giderler || [];
-    
-    // YENİ: Net Ciro ve Hak Ediş Verileri
     const netCiroEklemeleri = detay.net_ciro_eklemeleri || [];
     const hakedisEklemeleri = detay.hakedis_eklemeleri || [];
     
@@ -360,60 +358,16 @@ function displayPrimDetail(detay) {
         html += '</tbody></table></div></div>';
     }
     
-    // YENİ: Net Ciro Eklemeleri
-    if (netCiroEklemeleri.length > 0) {
-        const toplamNetCiro = netCiroEklemeleri.reduce((sum, item) => sum + parseFloat(item.tutar || 0), 0);
-        
-        html += '<div class="card mt-3"><div class="card-header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">';
-        html += '<i class="fas fa-plus-circle"></i> Net Ciro Eklemeleri</div><div class="card-body">';
-        html += '<table class="table table-sm table-hover"><thead class="table-success"><tr><th>Tarih</th><th>Açıklama</th>';
-        html += '<th>Kategori</th><th class="text-end">Tutar</th></tr></thead><tbody>';
-        
-        netCiroEklemeleri.forEach(item => {
-            html += `<tr style="border-left: 4px solid #38ef7d;">`;
-            html += `<td>${formatDate(item.tarih)}</td>`;
-            html += `<td>${item.aciklama || '-'}</td>`;
-            html += `<td><span class="badge bg-success">${item.kategori || 'diger'}</span></td>`;
-            html += `<td class="text-end text-success fw-bold">${formatCurrency(item.tutar)}</td>`;
-            html += `</tr>`;
-        });
-        
-        html += `<tfoot class="table-light"><tr><td colspan="3" class="text-end"><strong>Net Ciro Ekleme Toplamı:</strong></td>`;
-        html += `<td class="text-end"><strong class="text-success fs-5">${formatCurrency(toplamNetCiro)}</strong></td></tr></tfoot>`;
-        html += '</tbody></table></div></div>';
-    }
-    
-    // YENİ: Hak Ediş Eklemeleri
-    if (hakedisEklemeleri.length > 0) {
-        const toplamHakedis = hakedisEklemeleri.reduce((sum, item) => sum + parseFloat(item.tutar || 0), 0);
-        
-        html += '<div class="card mt-3"><div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">';
-        html += '<i class="fas fa-hand-holding-usd"></i> Hak Ediş Eklemeleri</div><div class="card-body">';
-        html += '<table class="table table-sm table-hover"><thead class="table-primary"><tr><th>Tarih</th><th>Açıklama</th>';
-        html += '<th>Kategori</th><th class="text-end">Tutar</th></tr></thead><tbody>';
-        
-        hakedisEklemeleri.forEach(item => {
-            html += `<tr style="border-left: 4px solid #764ba2;">`;
-            html += `<td>${formatDate(item.tarih)}</td>`;
-            html += `<td>${item.aciklama || '-'}</td>`;
-            html += `<td><span class="badge bg-primary">${item.kategori || 'bonus'}</span></td>`;
-            html += `<td class="text-end text-primary fw-bold">${formatCurrency(item.tutar)}</td>`;
-            html += `</tr>`;
-        });
-        
-        html += `<tfoot class="table-light"><tr><td colspan="3" class="text-end"><strong>Hak Ediş Ekleme Toplamı:</strong></td>`;
-        html += `<td class="text-end"><strong class="text-primary fs-5">${formatCurrency(toplamHakedis)}</strong></td></tr></tfoot>`;
-        html += '</tbody></table></div></div>';
-    }
-    
-    // Giderler (Mevcut kod devam ediyor...)
+    // Giderler
     const toplamLab = laboratuvarGiderleri.reduce((s, g) => s + parseFloat(g.tutar || 0), 0);
     const toplamImplant = implantGiderleri.reduce((s, g) => s + parseFloat(g.tutar || 0), 0);
     const toplamDiger = digerGiderler.reduce((s, g) => s + parseFloat(g.tutar || 0), 0);
+    const toplamNetCiro = netCiroEklemeleri.reduce((s, g) => s + parseFloat(g.tutar || 0), 0);
+    const toplamHakedis = hakedisEklemeleri.reduce((s, g) => s + parseFloat(g.tutar || 0), 0);
     const toplamGiderAll = toplamLab + toplamImplant + toplamDiger;
     
-    if (toplamGiderAll > 0) {
-        html += '<div class="card mt-3"><div class="card-header bg-danger text-white">Giderler Detayı</div><div class="card-body">';
+    if (toplamGiderAll > 0 || toplamNetCiro > 0 || toplamHakedis > 0) {
+        html += '<div class="card mt-3"><div class="card-header bg-danger text-white">Giderler ve Eklemeler Detayı</div><div class="card-body">';
         
         if (laboratuvarGiderleri.length > 0) {
             html += '<h6 class="text-info mt-3"><i class="fas fa-flask"></i> Laboratuvar Giderleri</h6>';
@@ -442,11 +396,33 @@ function displayPrimDetail(detay) {
             html += `<tfoot class="table-light"><tr><td colspan="2"><strong>Diğer Gider Toplamı</strong></td><td class="text-end text-success fw-bold">${formatCurrency(toplamDiger)}</td></tr></tfoot></tbody></table>`;
         }
         
+        // NET CİRO EKLEMELERİ
+        if (netCiroEklemeleri.length > 0) {
+            html += '<h6 class="text-primary mt-3"><i class="fas fa-plus-circle"></i> Net Ciro Eklemeleri</h6>';
+            html += '<table class="table table-sm table-hover"><thead class="table-primary"><tr><th>Tarih</th><th>Açıklama</th><th class="text-end">Tutar</th></tr></thead><tbody>';
+            netCiroEklemeleri.forEach(item => {
+                html += `<tr style="border-left: 4px solid #007bff;"><td>${formatDate(item.tarih)}</td><td>${item.aciklama}</td><td class="text-end text-primary fw-bold">${formatCurrency(item.tutar)}</td></tr>`;
+            });
+            html += `<tfoot class="table-light"><tr><td colspan="2"><strong>Net Ciro Toplamı</strong></td><td class="text-end text-primary fw-bold">${formatCurrency(toplamNetCiro)}</td></tr></tfoot></tbody></table>`;
+        }
+        
+        // HAK EDİŞ EKLEMELERİ
+        if (hakedisEklemeleri.length > 0) {
+            html += '<h6 class="text-dark mt-3"><i class="fas fa-hand-holding-usd"></i> Hak Ediş Eklemeleri</h6>';
+            html += '<table class="table table-sm table-hover"><thead class="table-dark"><tr><th>Tarih</th><th>Açıklama</th><th class="text-end">Tutar</th></tr></thead><tbody>';
+            hakedisEklemeleri.forEach(item => {
+                html += `<tr style="border-left: 4px solid #343a40;"><td>${formatDate(item.tarih)}</td><td>${item.aciklama}</td><td class="text-end text-dark fw-bold">${formatCurrency(item.tutar)}</td></tr>`;
+            });
+            html += `<tfoot class="table-light"><tr><td colspan="2"><strong>Hak Ediş Toplamı</strong></td><td class="text-end text-dark fw-bold">${formatCurrency(toplamHakedis)}</td></tr></tfoot></tbody></table>`;
+        }
+        
         html += `<div class="alert alert-danger mt-3 mb-0"><div class="row text-center">`;
-        html += `<div class="col-md-3"><strong>Laboratuvar:</strong><br><h5 class="mb-0">${formatCurrency(toplamLab)}</h5></div>`;
-        html += `<div class="col-md-3"><strong>İmplant:</strong><br><h5 class="mb-0">${formatCurrency(toplamImplant)}</h5></div>`;
-        html += `<div class="col-md-3"><strong>Diğer:</strong><br><h5 class="mb-0">${formatCurrency(toplamDiger)}</h5></div>`;
-        html += `<div class="col-md-3"><strong>TOPLAM:</strong><br><h4 class="mb-0">${formatCurrency(toplamGiderAll)}</h4></div>`;
+        html += `<div class="col-md-2"><strong>Laboratuvar:</strong><br><h6 class="mb-0">${formatCurrency(toplamLab)}</h6></div>`;
+        html += `<div class="col-md-2"><strong>İmplant:</strong><br><h6 class="mb-0">${formatCurrency(toplamImplant)}</h6></div>`;
+        html += `<div class="col-md-2"><strong>Diğer:</strong><br><h6 class="mb-0">${formatCurrency(toplamDiger)}</h6></div>`;
+        html += `<div class="col-md-2"><strong>Net Ciro:</strong><br><h6 class="mb-0 text-primary">${formatCurrency(toplamNetCiro)}</h6></div>`;
+        html += `<div class="col-md-2"><strong>Hak Ediş:</strong><br><h6 class="mb-0 text-dark">${formatCurrency(toplamHakedis)}</h6></div>`;
+        html += `<div class="col-md-2"><strong>TOPLAM:</strong><br><h5 class="mb-0">${formatCurrency(toplamGiderAll)}</h5></div>`;
         html += '</div></div></div></div>';
     }
     
@@ -472,10 +448,14 @@ function generatePrintableHTML(detay) {
     const laboratuvarGiderleri = detay.laboratuvar_giderleri || [];
     const implantGiderleri = detay.implant_giderleri || [];
     const digerGiderler = detay.diger_giderler || [];
+    const netCiroEklemeleri = detay.net_ciro_eklemeleri || [];
+    const hakedisEklemeleri = detay.hakedis_eklemeleri || [];
     
     const toplamLab = laboratuvarGiderleri.reduce((s, g) => s + parseFloat(g.tutar || 0), 0);
     const toplamImplant = implantGiderleri.reduce((s, g) => s + parseFloat(g.tutar || 0), 0);
     const toplamDiger = digerGiderler.reduce((s, g) => s + parseFloat(g.tutar || 0), 0);
+    const toplamNetCiro = netCiroEklemeleri.reduce((s, g) => s + parseFloat(g.tutar || 0), 0);
+    const toplamHakedis = hakedisEklemeleri.reduce((s, g) => s + parseFloat(g.tutar || 0), 0);
     
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
@@ -539,8 +519,8 @@ function generatePrintableHTML(detay) {
                     </table>
                 ` : ''}
                 
-                ${(toplamLab + toplamImplant + toplamDiger) > 0 ? `
-                    <div class="section-title">GİDERLER DETAYI</div>
+                ${(toplamLab + toplamImplant + toplamDiger + toplamNetCiro + toplamHakedis) > 0 ? `
+                    <div class="section-title">GİDERLER VE EKLEMELER DETAYI</div>
                     
                     ${laboratuvarGiderleri.length > 0 ? `
                         <h6 class="text-info">Laboratuvar Giderleri</h6>
@@ -556,8 +536,7 @@ function generatePrintableHTML(detay) {
                         <table class="table table-sm table-bordered">
                             <thead class="table-warning"><tr><th>Tarih</th><th>Hasta</th><th>Marka</th><th>Adet</th><th class="text-end">Tutar</th></tr></thead>
                             <tbody>${implantGiderleri.map(g => `<tr><td>${formatDate(g.tarih)}</td><td>${g.hasta_adi}</td><td>${g.implant_markasi}</td><td>${g.adet}</td><td class="text-end">${formatCurrency(g.tutar)}</td></tr>`).join('')}</tbody>
-                            <tfoot class="table-light"><tr><td colspan="4"><strong>Toplam</strong></td><td class="text
--end"><strong>${formatCurrency(toplamImplant)}</strong></td></tr></tfoot>
+                            <tfoot class="table-light"><tr><td colspan="4"><strong>Toplam</strong></td><td class="text-end"><strong>${formatCurrency(toplamImplant)}</strong></td></tr></tfoot>
                         </table>
                     ` : ''}
                     
@@ -570,12 +549,32 @@ function generatePrintableHTML(detay) {
                         </table>
                     ` : ''}
                     
-                    <div class="alert alert-danger mt-2 mb-0">
+                    ${netCiroEklemeleri.length > 0 ? `
+                        <h6 class="text-primary">Net Ciro Eklemeleri</h6>
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-primary"><tr><th>Tarih</th><th>Açıklama</th><th class="text-end">Tutar</th></tr></thead>
+                            <tbody>${netCiroEklemeleri.map(item => `<tr><td>${formatDate(item.tarih)}</td><td>${item.aciklama}</td><td class="text-end">${formatCurrency(item.tutar)}</td></tr>`).join('')}</tbody>
+                            <tfoot class="table-light"><tr><td colspan="2"><strong>Toplam</strong></td><td class="text-end"><strong>${formatCurrency(toplamNetCiro)}</strong></td></tr></tfoot>
+                        </table>
+                    ` : ''}
+                    
+                    ${hakedisEklemeleri.length > 0 ? `
+                        <h6 class="text-dark">Hak Ediş Eklemeleri</h6>
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-dark"><tr><th>Tarih</th><th>Açıklama</th><th class="text-end">Tutar</th></tr></thead>
+                            <tbody>${hakedisEklemeleri.map(item => `<tr><td>${formatDate(item.tarih)}</td><td>${item.aciklama}</td><td class="text-end">${formatCurrency(item.tutar)}</td></tr>`).join('')}</tbody>
+                            <tfoot class="table-light"><tr><td colspan="2"><strong>Toplam</strong></td><td class="text-end"><strong>${formatCurrency(toplamHakedis)}</strong></td></tr></tfoot>
+                        </table>
+                    ` : ''}
+                    
+                    <div class="alert alert-info mt-2 mb-0">
                         <div class="row text-center">
-                            <div class="col-3"><small>Laboratuvar</small><br><strong>${formatCurrency(toplamLab)}</strong></div>
-                            <div class="col-3"><small>İmplant</small><br><strong>${formatCurrency(toplamImplant)}</strong></div>
-                            <div class="col-3"><small>Diğer</small><br><strong>${formatCurrency(toplamDiger)}</strong></div>
-                            <div class="col-3"><small>TOPLAM</small><br><h5 class="mb-0">${formatCurrency(toplamLab + toplamImplant + toplamDiger)}</h5></div>
+                            <div class="col-2"><small>Laboratuvar</small><br><strong>${formatCurrency(toplamLab)}</strong></div>
+                            <div class="col-2"><small>İmplant</small><br><strong>${formatCurrency(toplamImplant)}</strong></div>
+                            <div class="col-2"><small>Diğer</small><br><strong>${formatCurrency(toplamDiger)}</strong></div>
+                            <div class="col-2"><small>Net Ciro</small><br><strong class="text-primary">${formatCurrency(toplamNetCiro)}</strong></div>
+                            <div class="col-2"><small>Hak Ediş</small><br><strong class="text-dark">${formatCurrency(toplamHakedis)}</strong></div>
+                            <div class="col-2"><small>Gider Toplamı</small><br><h6 class="mb-0">${formatCurrency(toplamLab + toplamImplant + toplamDiger)}</h6></div>
                         </div>
                     </div>
                 ` : ''}
