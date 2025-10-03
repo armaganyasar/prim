@@ -299,25 +299,91 @@
         </div>
         {% endif %}
 
-        <div class="alert alert-danger mt-3">
-            <div class="row text-center">
-                <div class="col-3">
-                    <strong>Laboratuvar:</strong><br>
-                    <h5>{{ "%.2f"|format(toplam_lab) }} ₺</h5>
-                </div>
-                <div class="col-3">
-                    <strong>İmplant:</strong><br>
-                    <h5>{{ "%.2f"|format(toplam_implant) }} ₺</h5>
-                </div>
-                <div class="col-3">
-                    <strong>Diğer:</strong><br>
-                    <h5>{{ "%.2f"|format(toplam_diger) }} ₺</h5>
-                </div>
-                <div class="col-3">
-                    <strong>TOPLAM GİDER:</strong><br>
-                    <h4 class="mb-0">{{ "%.2f"|format(toplam_gider_all) }} ₺</h4>
-                </div>
-            </div>
+{# YENİ: NET CİRO EKLEMELERİ #}
+        {% set net_ciro_eklemeleri = detay.net_ciro_eklemeleri or [] %}
+        {% set toplam_net_ciro = 0 %}
+        
+        {% if net_ciro_eklemeleri %}
+            {% for item in net_ciro_eklemeleri %}
+                {% set toplam_net_ciro = toplam_net_ciro + (item.tutar or 0) %}
+            {% endfor %}
+        {% endif %}
+        
+        {% if net_ciro_eklemeleri and net_ciro_eklemeleri|length > 0 %}
+        <div class="section-title" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+            <i class="fas fa-plus-circle"></i> NET CİRO EKLEMELERİ
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead style="background-color: #38ef7d !important; color: white !important;">
+                    <tr>
+                        <th>Tarih</th>
+                        <th>Açıklama</th>
+                        <th>Kategori</th>
+                        <th class="text-end">Tutar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in net_ciro_eklemeleri %}
+                    <tr style="border-left: 4px solid #38ef7d;">
+                        <td>{{ item.tarih or '-' }}</td>
+                        <td>{{ item.aciklama or '-' }}</td>
+                        <td><span class="badge bg-success">{{ item.kategori or 'diger' }}</span></td>
+                        <td class="text-end fw-bold" style="color: #38ef7d;">{{ "%.2f"|format(item.tutar or 0) }} ₺</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <td colspan="3"><strong>Net Ciro Ekleme Toplamı</strong></td>
+                        <td class="text-end fw-bold" style="color: #38ef7d; font-size: 1.2em;">{{ "%.2f"|format(toplam_net_ciro) }} ₺</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% endif %}
+
+        {# YENİ: HAK EDİŞ EKLEMELERİ #}
+        {% set hakedis_eklemeleri = detay.hakedis_eklemeleri or [] %}
+        {% set toplam_hakedis = 0 %}
+        
+        {% if hakedis_eklemeleri %}
+            {% for item in hakedis_eklemeleri %}
+                {% set toplam_hakedis = toplam_hakedis + (item.tutar or 0) %}
+            {% endfor %}
+        {% endif %}
+        
+        {% if hakedis_eklemeleri and hakedis_eklemeleri|length > 0 %}
+        <div class="section-title" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <i class="fas fa-hand-holding-usd"></i> HAK EDİŞ EKLEMELERİ
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead style="background-color: #764ba2 !important; color: white !important;">
+                    <tr>
+                        <th>Tarih</th>
+                        <th>Açıklama</th>
+                        <th>Kategori</th>
+                        <th class="text-end">Tutar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in hakedis_eklemeleri %}
+                    <tr style="border-left: 4px solid #764ba2;">
+                        <td>{{ item.tarih or '-' }}</td>
+                        <td>{{ item.aciklama or '-' }}</td>
+                        <td><span class="badge bg-primary">{{ item.kategori or 'bonus' }}</span></td>
+                        <td class="text-end fw-bold" style="color: #764ba2;">{{ "%.2f"|format(item.tutar or 0) }} ₺</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <td colspan="3"><strong>Hak Ediş Ekleme Toplamı</strong></td>
+                        <td class="text-end fw-bold" style="color: #764ba2; font-size: 1.2em;">{{ "%.2f"|format(toplam_hakedis) }} ₺</td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
         {% endif %}
 
