@@ -1,0 +1,35 @@
+# -----------------------------------------------------------------
+# Flask/Python Uygulaması için Genel Git Yoksayma Dosyası (.gitignore)
+# -----------------------------------------------------------------
+
+# 1. Sanal Ortamlar (Virtual Environments)
+# Flask projesinin bağımlılıklarını tutan klasörler gizlenir.
+venv/
+.venv/
+
+# 2. Hassas Yapılandırma ve Veri Dosyaları
+# Bu, şifre ve bağlantı bilgilerini içeren ASIL dosyadır. KESİNLİKLE YÜKLENMEMELİ!
+config.py
+
+# Çevre değişkeni dosyaları (API anahtarları, şifreler vb. içerebilir)
+.env
+.flaskenv
+
+# SQLite Veritabanı dosyaları (varsa)
+*.db
+*.sqlite
+*.sqlite3
+
+# 3. Python Derleme ve Çalışma Dosyaları
+# Python'ın otomatik oluşturduğu geçici ve gereksiz dosyalar
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+pip-log.txt
+pip-delete-this-directory.txt
+.history/
+
+# 4. İşletim Sistemi ve IDE Dosyaları
+.DS_Store
+Thumbs.db
+.vscode/ # VS Code ayarları

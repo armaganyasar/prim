@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hekim Prim Yönetimi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-custom {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            border: none;
+            color: white;
+        }
+        
+        .btn-custom:hover {
+            background: linear-gradient(45deg, #0056b3, #004085);
+            color: white;
+        }
+        
+        .table-hover tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .badge-prim {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+        
+        .tahsilat-row {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+        
+        .gider-row {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+        }
+        
+        .gider-row-lab {
+            border-left: 4px solid #17a2b8;
+        }
+        
+        .gider-row-implant {
+            border-left: 4px solid #ffc107;
+        }
+        
+        .gider-row-diger {
+            border-left: 4px solid #28a745;
+        }
+        
+        .gider-row-netciro {
+            border-left: 4px solid #198754;
+            background: #d1f4e0;
+        }
+        
+        .gider-row-hakedis {
+            border-left: 4px solid #ffc107;
+            background: #fff3cd;
+        }
+        
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            background: #e9ecef;
+            margin: 0 5px;
+            border-radius: 5px;
+            position: relative;
+        }
+        
+        .step.active {
+            background: #007bff;
+            color: white;
+        }
+        
+        .step.completed {
+            background: #28a745;
+            color: white;
+        }
+        
+        .modal-xl {
+            max-width: 90%;
+        }
+        
+        .ayar-item {
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+        }
+        
+        .bulk-input-area {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            border: 2px dashed #6c757d;
+        }
+        
+        .nav-tabs .nav-link {
+            color: #495057;
+        }
+        
+        .nav-tabs .nav-link.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .gider-summary-box {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container-fluid mt-4">
+        <div class="row mb-4">
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2><i class="fas fa-calculator text-warning"></i> Hekim Prim Yönetimi</h2>
+                        <p class="text-muted">Hekim primlerini hesaplayın, kaydedin ve raporlayın</p>
+                    </div>
+                    <div>
+                        <span class="badge bg-info me-2">{{ session.get('username') }} ({{ session.get('role') }})</span>
+                        {% if session.get('role') == 'admin' %}
+                        <a href="/cari_yonetimi" class="btn btn-outline-secondary me-2"> 
+                            <i class="fas fa-users"></i> Cari Yönetimi 
+                        </a>
+                        <button class="btn btn-outline-danger me-2" onclick="showHizliOdemeModal()">
+                            <i class="fas fa-credit-card"></i> Hekime Hızlı Ödeme
+                        </button>
+                        <button class="btn btn-outline-warning me-2" data-bs-toggle="modal" data-bs-target="#ayarlarModal">
+                            <i class="fas fa-cog"></i> Prim Ayarları
+                        </button>
+                        {% endif %}
+                        <a href="/prim_listesi" class="btn btn-outline-success me-2" target="_blank">
+                            <i class="fas fa-list"></i> Kayıtlı Primler
+                        </a>
+                        <a href="{{ url_for('home') }}" class="btn btn-outline-primary me-2">
+                            <i class="fas fa-home"></i> Ana Sayfa
+                        </a>
+                        <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">
+                            <i class="fas fa-sign-out-alt"></i> Çıkış
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="row mb-3">
+            <div class="col">
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <div class="step-indicator">
+            <div class="step active" id="step1">
+                <i class="fas fa-user-md"></i><br>
+                <small>1. Hekim Seçimi</small>
+            </div>
+            <div class="step" id="step2">
+                <i class="fas fa-money-bill"></i><br>
+                <small>2. Tahsilat Verileri</small>
+            </div>
+            <div class="step" id="step3">
+                <i class="fas fa-edit"></i><br>
+                <small>3. Kesinti Düzenleme</small>
+            </div>
+            <div class="step" id="step4">
+                <i class="fas fa-receipt"></i><br>
+                <small>4. Gider/Ekleme</small>
+            </div>
+            <div class="step" id="step5">
+                <i class="fas fa-calculator"></i><br>
+                <small>5. Prim Hesaplama</small>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card mb-4" id="hekim-secim-panel">
+                    <div class="card-header">
+                        <h5><i class="fas fa-user-md"></i> Hekim ve Dönem Seçimi</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="hekimSecimForm">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label class="form-label">Şube Seçin</label>
+                                    <select class="form-select" id="subeSelect" required>
+                                        <option value="">Şube seçiniz...</option>
+                                        {% for branch in branches %}
+                                        <option value="{{ branch.id }}">{{ branch.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Hekim Seçin</label>
+                                    <select class="form-select" id="dokterSelect" required disabled>
+                                        <option value="">Önce şube seçiniz...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Prim Oranı (%)</label>
+                                    <input type="number" class="form-control" id="primOraniInput" step="0.01" readonly>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Başlangıç Tarihi</label>
+                                    <input type="date" class="form-control" id="baslangicTarihi" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Bitiş Tarihi</label>
+                                    <input type="date" class="form-control" id="bitisTarihi" required>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button type="submit" class="btn btn-custom">
+                                    <i class="fas fa-search"></i> Tahsilat Verilerini Getir
+                                </button>
+                            </div>
+                        </form>
+                        <div class="loading-spinner" id="loadingSpinner">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2">Tahsilat verileri getiriliyor, lütfen bekleyin...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4" id="tahsilat-panel" style="display: none;">
+                    <div class="card-header">
+                        <h5><i class="fas fa-money-bill"></i> Tahsilat Verileri</h5>
+                        <small class="text-light">Bu hekimin seçilen dönemdeki tüm tahsilatları</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Otomatik Sistem:</strong> 
+                            Tüm işlemler en uygun ayarlarla gelir. KDV ve taksit ayarlarını değiştirebilirsiniz.
+                        </div>
+                        <div id="tahsilatListesi"></div>
+                        <div class="text-end mt-3">
+                            <button type="button" class="btn btn-success" id="tahsilatOnaylaBtn" disabled>
+                                <i class="fas fa-check"></i> Tahsilat Verilerini Onayla ve Devam Et
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4" id="gider-panel" style="display: none;">
+                    <div class="card-header">
+                        <h5><i class="fas fa-receipt"></i> Gider ve Ekleme Yönetimi</h5>
+                        <small class="text-light">Giderler, Net Ciro ve Hak Ediş Eklemeleri</small>
+                    </div>
+                    <div class="card-body">
+                        <ul class="nav nav-tabs mb-3" id="giderTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="laboratuvar-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#laboratuvarTab" type="button" role="tab">
+                                    <i class="fas fa-flask"></i> Laboratuvar
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="implant-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#implantTab" type="button" role="tab">
+                                    <i class="fas fa-tooth"></i> İmplant
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="diger-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#digerTab" type="button" role="tab">
+                                    <i class="fas fa-file-invoice"></i> Diğer Giderler
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="netciro-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#netCiroTab" type="button" role="tab">
+                                    <i class="fas fa-plus-circle text-success"></i> Net Ciro +
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="hakedis-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#hakedisTab" type="button" role="tab">
+                                    <i class="fas fa-gift text-warning"></i> Hak Ediş +
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="giderTabContent">
+                            <div class="tab-pane fade show active" id="laboratuvarTab" role="tabpanel">
+                                <div class="d-flex justify-content-between mb-3">
+                                    <h6><i class="fas fa-flask text-info"></i> Laboratuvar Giderleri</h6>
+                                    <button type="button" class="btn btn-sm btn-info" 
+                                            data-bs-toggle="modal" data-bs-target="#laboratuvarModal">
+                                        <i class="fas fa-plus"></i> Laboratuvar Gideri Ekle
+                                    </button>
+                                </div>
+                                <div id="laboratuvarListesi">
+                                    <p class="text-muted text-center py-3">Henüz laboratuvar gideri eklenmedi.</p>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="implantTab" role="tabpanel">
+                                <div class="d-flex justify-content-between mb-3">
+                                    <h6><i class="fas fa-tooth text-warning"></i> İmplant Giderleri</h6>
+                                    <button type="button" class="btn btn-sm btn-warning" 
+                                            data-bs-toggle="modal" data-bs-target="#implantModal">
+                                        <i class="fas fa-plus"></i> İmplant Gideri Ekle
+                                    </button>
+                                </div>
+                                <div id="implantListesi">
+                                    <p class="text-muted text-center py-3">Henüz implant gideri eklenmedi.</p>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="digerTab" role="tabpanel">
+                                <div class="d-flex justify-content-between mb-3">
+                                    <h6><i class="fas fa-file-invoice text-success"></i> Diğer Giderler</h6>
+                                    <button type="button" class="btn btn-sm btn-success" 
+                                            data-bs-toggle="modal" data-bs-target="#digerGiderModal">
+                                        <i class="fas fa-plus"></i> Diğer Gider Ekle
+                                    </button>
+                                </div>
+                                <div id="digerGiderListesi">
+                                    <p class="text-muted text-center py-3">Henüz diğer gider eklenmedi.</p>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="netCiroTab" role="tabpanel">
+                                <div class="d-flex justify-content-between mb-3">
+                                    <h6><i class="fas fa-plus-circle text-success"></i> Net Ciro Eklemeleri</h6>
+                                    <button type="button" class="btn btn-sm btn-success" 
+                                            data-bs-toggle="modal" data-bs-target="#netCiroModal">
+                                        <i class="fas fa-plus"></i> Net Ciro Ekle
+                                    </button>
+                                </div>
+                                <div class="alert alert-success">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Net Ciro Eklemeleri:</strong> Doğrudan net ciroya eklenir ve prim matrahını etkiler.
+                                    <br><small>Örnek: Tedavi aktarımları, özel anlaşmalı işlemler</small>
+                                </div>
+                                <div id="netCiroListesi">
+                                    <p class="text-muted text-center py-3">Henüz net ciro eklemesi yapılmadı.</p>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="hakedisTab" role="tabpanel">
+                                <div class="d-flex justify-content-between mb-3">
+                                    <h6><i class="fas fa-gift text-warning"></i> Hak Ediş Eklemeleri</h6>
+                                    <button type="button" class="btn btn-sm btn-warning" 
+                                            data-bs-toggle="modal" data-bs-target="#hakedisModal">
+                                        <i class="fas fa-plus"></i> Hak Ediş Ekle
+                                    </button>
+                                </div>
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Hak Ediş Eklemeleri:</strong> Doğrudan hesaplanan prime eklenir.
+                                    <br><small>Örnek: Performans bonusları, özel teşvikler</small>
+                                </div>
+                                <div id="hakedisListesi">
+                                    <p class="text-muted text-center py-3">Henüz hak ediş eklemesi yapılmadı.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="gider-summary-box">
+                            <div class="row text-center">
+                                <div class="col-md-2">
+                                    <small class="text-muted">Laboratuvar</small><br>
+                                    <strong id="toplamLab" class="text-info">0,00 TL</strong>
+                                </div>
+                                <div class="col-md-2">
+                                    <small class="text-muted">İmplant</small><br>
+                                    <strong id="toplamImplant" class="text-warning">0,00 TL</strong>
+                                </div>
+                                <div class="col-md-2">
+                                    <small class="text-muted">Diğer</small><br>
+                                    <strong id="toplamDiger" class="text-success">0,00 TL</strong>
+                                </div>
+                                <div class="col-md-2">
+                                    <small class="text-muted">TOPLAM GİDER</small><br>
+                                    <strong id="toplamTumGider" class="text-danger fs-6">0,00 TL</strong>
+                                </div>
+                                <div class="col-md-2">
+                                    <small class="text-muted">Net Ciro Ek</small><br>
+                                    <strong id="toplamNetCiro" class="text-success fs-6">+0,00 TL</strong>
+                                </div>
+                                <div class="col-md-2">
+                                    <small class="text-muted">Hak Ediş Ek</small><br>
+                                    <strong id="toplamHakedis" class="text-warning fs-6">+0,00 TL</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-end mt-3">
+                            <button type="button" class="btn btn-success" id="giderOnaylaBtn">
+                                <i class="fas fa-calculator"></i> Prim Hesaplamasına Geç
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card mb-3" id="hekimBilgiCard" style="display: none;">
+                    <div class="card-header">
+                        <h6><i class="fas fa-user-md"></i> Hekim Bilgileri</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="hekimBilgileri"></div>
+                    </div>
+                </div>
+
+                <div class="card mb-3" id="cariInfoCard" style="display: none;">
+                    <div class="card-header bg-dark text-white">
+                        <h6><i class="fas fa-users"></i> Cari Hesap Entegrasyonu</h6>
+                    </div>
+                    <div class="card-body p-2" id="cariInfoContent">
+                    </div>
+                </div>
+
+                <div class="card summary-card" id="hesaplamaSonucCard" style="display: none;">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-line"></i> Prim Hesaplama Sonucu</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="hesaplamaSonucu"></div>
+                        <div class="d-grid gap-2 mt-3">
+                            <button type="button" class="btn btn-light" id="kaydetBtn" disabled>
+                                <i class="fas fa-save"></i> Primi Kaydet
+                            </button>
+                            <a href="/prim_listesi" class="btn btn-outline-light" target="_blank">
+                                <i class="fas fa-list"></i> Kayıtlı Primleri Görüntüle
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Laboratuvar Modal -->
+    <div class="modal fade" id="laboratuvarModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="fas fa-flask"></i> Laboratuvar Gideri Ekle</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Copy-Paste Desteği:</strong> Excel'den veya başka bir kaynaktan kopyalayıp yapıştırabilirsiniz.<br>
+                        <small>Format: Tarih [TAB] Hasta Adı [TAB] İşlem [TAB] Tutar</small>
+                    </div>
+                    <textarea class="form-control bulk-input-area mb-3" id="laboratuvarBulkInput" rows="4" 
+                              placeholder="Örnek:&#10;2025-01-15	Ahmet Yılmaz	Porselen Kaplama	1500&#10;2025-01-16	Ayşe Demir	Zirkonyum Köprü	2800"></textarea>
+                    <button type="button" class="btn btn-sm btn-secondary mb-3" onclick="parseLaboratuvarBulk()">
+                        <i class="fas fa-paste"></i> Yapıştırılan Veriyi İşle
+                    </button>
+                    <hr>
+                    <h6>Veya Tek Kayıt Girin:</h6>
+                    <form id="laboratuvarForm">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label class="form-label">Tarih</label>
+                                <input type="date" class="form-control" id="labTarih" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Hasta Adı</label>
+                                <input type="text" class="form-control" id="labHastaAdi" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">İşlem</label>
+                                <input type="text" class="form-control" id="labIslem" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Tutar</label>
+                                <input type="number" class="form-control" id="labTutar" step="0.01" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-info" onclick="laboratuvarGiderEkle()">
+                        <i class="fas fa-plus"></i> Ekle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- İmplant Modal -->
+    <div class="modal fade" id="implantModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="fas fa-tooth"></i> İmplant Gideri Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Copy-Paste Desteği:</strong> Excel'den kopyalayıp yapıştırabilirsiniz.<br>
+                        <small>Format: Tarih [TAB] Hasta [TAB] Marka [TAB] Boy [TAB] Çap [TAB] Birim [TAB] Adet [TAB] Tutar</small>
+                    </div>
+                    <textarea class="form-control bulk-input-area mb-3" id="implantBulkInput" rows="4" 
+                              placeholder="Örnek:&#10;2025-01-15	Mehmet Yılmaz	Straumann	10mm	4.1mm	Adet	2	3500&#10;2025-01-16	Fatma Demir	Nobel Biocare	12mm	3.5mm	Adet	1	1800"></textarea>
+                    <button type="button" class="btn btn-sm btn-secondary mb-3" onclick="parseImplantBulk()">
+                        <i class="fas fa-paste"></i> Yapıştırılan Veriyi İşle
+                    </button>
+                    <hr>
+                    <h6>Veya Tek Kayıt Girin:</h6>
+                    <form id="implantForm">
+                        <div class="row">
+                            <div class="col-md-2">
+                                <label class="form-label">Tarih</label>
+                                <input type="date" class="form-control" id="impTarih" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Hasta Adı</label>
+                                <input type="text" class="form-control" id="impHastaAdi" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Marka</label>
+                                <input type="text" class="form-control" id="impMarka" required>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Boy</label>
+                                <input type="text" class="form-control" id="impBoy" placeholder="10mm" required>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Çap</label>
+                                <input type="text" class="form-control" id="impCap" placeholder="4.1mm" required>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Birim</label>
+                                <input type="text" class="form-control" id="impBirim" value="Adet" required>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Adet</label>
+                                <input type="number" class="form-control" id="impAdet" min="1" value="1" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Tutar</label>
+                                <input type="number" class="form-control" id="impTutar" step="0.01" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-warning" onclick="implantGiderEkle()">
+                        <i class="fas fa-plus"></i> Ekle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Diğer Gider Modal -->
+    <div class="modal fade" id="digerGiderModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-file-invoice"></i> Diğer Gider Ekle</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="digerGiderForm">
+                        <div class="mb-3">
+                            <label class="form-label">Hasta Adı</label>
+                            <input type="text" class="form-control" id="digerHastaAdi" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Gider Kategorisi</label>
+                            <select class="form-select" id="digerKategorisi" required>
+                                <option value="">Kategori seçiniz...</option>
+                                {% for kategori in ayarlar.gider_kategorileri %}
+                                <option value="{{ kategori.kategori }}">{{ kategori.kategori }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tutar (TL)</label>
+                            <input type="number" class="form-control" id="digerTutar" step="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Açıklama (İsteğe bağlı)</label>
+                            <textarea class="form-control" id="digerAciklama" rows="2"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-success" onclick="digerGiderEkle()">
+                        <i class="fas fa-plus"></i> Ekle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Net Ciro Ekleme Modal -->
+    <div class="modal fade" id="netCiroModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-plus-circle"></i> Net Ciro Eklemesi</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="netCiroForm">
+                        <div class="mb-3">
+                            <label class="form-label">Tarih</label>
+                            <input type="date" class="form-control" id="netCiroTarih" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Hasta Adı (İsteğe bağlı)</label>
+                            <input type="text" class="form-control" id="netCiroHastaAdi">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Kategori</label>
+                            <select class="form-select" id="netCiroKategori" required>
+                                <option value="tedavi_aktarimi">Tedavi Aktarımı</option>
+                                <option value="ozel_anlasmali">Özel Anlaşmalı İşlem</option>
+                                <option value="ekstra_hizmet">Ekstra Hizmet Ücreti</option>
+                                <option value="diger">Diğer</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Açıklama</label>
+                            <textarea class="form-control" id="netCiroAciklama" rows="2" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tutar (TL)</label>
+                            <input type="number" class="form-control" id="netCiroTutar" step="0.01" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-success" onclick="netCiroEkle()">
+                        <i class="fas fa-plus"></i> Ekle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hak Ediş Ekleme Modal -->
+    <div class="modal fade" id="hakedisModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="fas fa-gift"></i> Hak Ediş Eklemesi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="hakedisForm">
+                        <div class="mb-3">
+                            <label class="form-label">Tarih</label>
+                            <input type="date" class="form-control" id="hakedisTarih" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Kategori</label>
+                            <select class="form-select" id="hakedisKategori" required>
+                                <option value="performans_bonusu">Performans Bonusu</option>
+                                <option value="ozel_tesvik">Özel Teşvik</option>
+                                <option value="donemsel_ikramiye">Dönemsel İkramiye</option>
+                                <option value="diger">Diğer</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Açıklama</label>
+                            <textarea class="form-control" id="hakedisAciklama" rows="2" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tutar (TL)</label>
+                            <input type="number" class="form-control" id="hakedisTutar" step="0.01" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-warning" onclick="hakedisEkle()">
+                        <i class="fas fa-plus"></i> Ekle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KDV Modal -->
+    <div class="modal fade" id="kdvModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">KDV Durumu Değiştir</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Hasta:</strong> <span id="kdvModalHastaAdi"></span></p>
+                    <p><strong>Tutar:</strong> <span id="kdvModalTutar"></span> TL</p>
+                    <p><strong>Ödeme Şekli:</strong> <span id="kdvModalOdemeSekli"></span></p>
+                    <hr>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Bilgi:</strong> Nakit, çek ve senet işlemleri için varsayılan olarak fatura kesilmemiş kabul edilir.
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="faturaKesildi" id="faturaEvet" value="true">
+                        <label class="form-check-label" for="faturaEvet">
+                            <strong>Evet, fatura kesildi</strong><br>
+                            <small class="text-warning">%10 KDV kesintisi yapılacak</small>
+                        </label>
+                    </div>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="radio" name="faturaKesildi" id="faturaHayir" value="false" checked>
+                        <label class="form-check-label" for="faturaHayir">
+                            <strong>Hayır, fatura kesilmedi</strong><br>
+                            <small class="text-success">KDV kesintisi yapılmayacak</small>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" id="kdvOnaylaBtn">
+                        <i class="fas fa-save"></i> Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Taksit Modal -->
+    <div class="modal fade" id="taksitModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">POS Taksit Ayarları</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Hasta:</strong> <span id="taksitModalHastaAdi"></span></p>
+                    <p><strong>Tutar:</strong> <span id="taksitModalTutar"></span> TL</p>
+                    <hr>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-credit-card"></i>
+                        <strong>POS Kesinti Sistemi:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Peşin (1 taksit):</strong> %10 KDV + %2 POS komisyonu = %12</li>
+                            <li><strong>Taksitli:</strong> %10 KDV + taksit kesintisi (POS komisyonu yok)</li>
+                        </ul>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Taksit Sayısı</label>
+                        <select class="form-select" id="taksitSayisi" required>
+                            {% for taksit in ayarlar.taksit_oranlari %}
+                            <option value="{{ taksit.taksit_sayisi }}" data-oran="{{ taksit.kesinti_orani }}">
+                                {{ taksit.taksit_sayisi }}{% if taksit.taksit_sayisi == 1 %} (Peşin){% else %} Taksit{% endif %}
+                                - %{{ taksit.kesinti_orani }} kesinti
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="alert alert-info" id="taksitBilgi">
+                        <small>Kesinti oranı buraya görünecek</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" id="taksitOnaylaBtn">
+                        <i class="fas fa-save"></i> Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if session.get('role') == 'admin' %}
+    <!-- Ayarlar Modal -->
+    <div class="modal fade" id="ayarlarModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Prim Ayarları Yönetimi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between">
+                            <h6>Taksit Kesinti Oranları</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="yeniTaksitBtn">
+                                <i class="fas fa-plus"></i> Yeni Taksit
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="taksitOranlarList"></div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between">
+                            <h6>Diğer Gider Kategorileri</h6>
+                            <button type="button" class="btn btn-sm btn-outline-success" id="yeniKategoriBtn">
+                                <i class="fas fa-plus"></i> Yeni Kategori
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="giderKategorilerList"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-success" id="ayarlariKaydetBtn">
+                        <i class="fas fa-save"></i> Ayarları Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Hızlı Ödeme Modal -->
+    <div class="modal fade" id="hizliOdemeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Hekime Hızlı Ödeme Yap</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="hizliOdemeForm">
+                        <div class="mb-3">
+                            <label class="form-label">Cari Hesap Seçin</label>
+                            <select class="form-select" id="hizliCariSelect" required>
+                                <option value="">Cari seçiniz...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tarih</label>
+                            <input type="date" class="form-control" id="hizliOdemeTarih" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ödeme Şekli</label>
+                            <select class="form-select" id="hizliOdemeSekli" required>
+                                <option value="">Seçiniz...</option>
+                                <option value="Nakit">Nakit</option>
+                                <option value="Banka Transferi">Banka Transferi / EFT</option>
+                                <option value="POS">POS Cihazı</option>
+                                <option value="Çek">Çek</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tutar (₺)</label>
+                            <input type="number" class="form-control" id="hizliOdemeTutar" step="0.01" min="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Açıklama</label>
+                            <textarea class="form-control" id="hizliOdemeAciklama" rows="2" required></textarea>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-arrow-alt-circle-down"></i> Ödemeyi Kaydet
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Role bilgisini sessionStorage'a kaydet
+        sessionStorage.setItem('userRole', '{{ session.get("role") }}');
+        
+        // Prim ayarları modal yükleyici
+        document.addEventListener('DOMContentLoaded', function() {
+            const ayarlarModal = document.getElementById('ayarlarModal');
+            if (ayarlarModal) {
+                ayarlarModal.addEventListener('show.bs.modal', function() {
+                    loadPrimAyarlari();
+                });
+            }
+        });
+
+        function loadPrimAyarlari() {
+            console.log('Prim ayarları yükleniyor...');
+            
+            fetch('/api/prim/ayarlar')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayPrimAyarlari(data.data);
+                    } else {
+                        console.error('Ayarlar yüklenemedi:', data.error);
+                        showAlert('Ayarlar yüklenemedi: ' + data.error, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Ayar yükleme hatası:', error);
+                    showAlert('Ayarlar yüklenirken hata oluştu', 'danger');
+                });
+        }
+
+        function displayPrimAyarlari(ayarlar) {
+            console.log('Ayarlar görüntüleniyor:', ayarlar);
+            
+            // Taksit oranlarını görüntüle
+            const taksitContainer = document.getElementById('taksitOranlarList');
+            if (taksitContainer && ayarlar.taksit_oranlari) {
+                taksitContainer.innerHTML = '';
+                
+                ayarlar.taksit_oranlari.forEach(taksit => {
+                    const div = document.createElement('div');
+                    div.className = 'ayar-item';
+                    div.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label class="form-label">Taksit Sayısı</label>
+                                <input type="number" class="form-control taksit-sayisi" value="${taksit.taksit_sayisi}" min="1" max="12">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Kesinti Oranı (%)</label>
+                                <input type="number" class="form-control kesinti-orani" value="${taksit.kesinti_orani}" step="0.1" min="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">&nbsp;</label><br>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.parentElement.parentElement.remove()">
+                                    <i class="fas fa-trash"></i> Sil
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    taksitContainer.appendChild(div);
+                });
+            }
+            
+            // Gider kategorilerini görüntüle
+            const kategoriContainer = document.getElementById('giderKategorilerList');
+            if (kategoriContainer && ayarlar.gider_kategorileri) {
+                kategoriContainer.innerHTML = '';
+                
+                ayarlar.gider_kategorileri.forEach(kategori => {
+                    const div = document.createElement('div');
+                    div.className = 'ayar-item';
+                    div.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-8">
+                                <label class="form-label">Kategori Adı</label>
+                                <input type="text" class="form-control kategori-adi" value="${kategori.kategori}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">&nbsp;</label><br>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.parentElement.parentElement.remove()">
+                                    <i class="fas fa-trash"></i> Sil
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    kategoriContainer.appendChild(div);
+                });
+            }
+            
+            console.log('Prim ayarları başarıyla görüntülendi');
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/primler.js') }}"></script>
+</body>
+</html>

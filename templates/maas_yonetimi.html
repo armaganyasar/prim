@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maaş Yönetimi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        .maas-card {
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .maas-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .hesaplama-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .hesaplama-item {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2><i class="fas fa-money-bill-wave text-success"></i> Maaş Yönetimi</h2>
+                        <p class="text-muted mb-0">Maaş hesaplama ve ödeme işlemleri</p>
+                    </div>
+                    <div>
+                        <a href="/personel" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-users"></i> Personel Listesi
+                        </a>
+                        <a href="/" class="btn btn-outline-primary">
+                            <i class="fas fa-home"></i> Ana Sayfa
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<div class="row g-3">
+    <div class="col-md-2">
+        <label class="form-label">Dönem Yıl</label>
+        <select class="form-select" id="filterYil"></select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Dönem Ay</label>
+        <select class="form-select" id="filterAy">
+            <option value="1">Ocak</option>
+            <option value="2">Şubat</option>
+            <option value="3">Mart</option>
+            <option value="4">Nisan</option>
+            <option value="5">Mayıs</option>
+            <option value="6">Haziran</option>
+            <option value="7">Temmuz</option>
+            <option value="8">Ağustos</option>
+            <option value="9">Eylül</option>
+            <option value="10">Ekim</option>
+            <option value="11">Kasım</option>
+            <option value="12">Aralık</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Cari Türü</label>
+        <select class="form-select" id="filterCariTuru">
+            <option value="">Tümü</option>
+            <!-- JS ile doldurulacak -->
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Alt Türü</label>
+        <select class="form-select" id="filterAltTuru">
+            <option value="">Tümü</option>
+            <!-- JS ile doldurulacak -->
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Personel</label>
+        <select class="form-select" id="filterPersonel">
+            <option value="">Tüm Personel</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">&nbsp;</label>
+        <button class="btn btn-primary w-100" onclick="maasListele()">
+            <i class="fas fa-search"></i> Listele
+        </button>
+    </div>
+</div>
+
+
+
+        <!-- Maaş Listesi -->
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0"><i class="fas fa-list"></i> Maaş Ödemeleri</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="maasListesi">
+                            <p class="text-center text-muted py-4">
+                                <i class="fas fa-info-circle"></i> Lütfen dönem seçip listeleyin
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Maaş Hesaplama Paneli -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-calculator"></i> Maaş Hesapla</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="maasHesaplaForm">
+                            <div class="mb-3">
+                                <label class="form-label">Personel Seç</label>
+                                <select class="form-select" id="hesaplaPersonel" required>
+                                    <option value="">Seçiniz...</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Dönem</label>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <select class="form-select" id="hesaplaAy" required>
+                                            <option value="1">Ocak</option>
+                                            <option value="2">Şubat</option>
+                                            <option value="3">Mart</option>
+                                            <option value="4">Nisan</option>
+                                            <option value="5">Mayıs</option>
+                                            <option value="6">Haziran</option>
+                                            <option value="7">Temmuz</option>
+                                            <option value="8">Ağustos</option>
+                                            <option value="9">Eylül</option>
+                                            <option value="10">Ekim</option>
+                                            <option value="11">Kasım</option>
+                                            <option value="12">Aralık</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <select class="form-select" id="hesaplaYil" required>
+                                            <!-- JS ile doldurulacak -->
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Ücretsiz İzin (Gün)</label>
+                                <input type="number" class="form-control" id="ucretsizIzin" value="0" min="0" max="30">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Fazla Mesai (Saat)</label>
+                                <input type="number" class="form-control" id="fazlaMesai" value="0" min="0" step="0.5">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Prim</label>
+                                <input type="number" class="form-control" id="prim" value="0" min="0" step="0.01">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Bonus</label>
+                                <input type="number" class="form-control" id="bonus" value="0" min="0" step="0.01">
+                            </div>
+                            <button type="button" class="btn btn-warning w-100 mb-2" onclick="maasHesapla()">
+                                <i class="fas fa-calculator"></i> Hesapla
+                            </button>
+                        </form>
+
+                        <!-- Hesaplama Sonucu -->
+                        <div id="hesaplamaSonuc" style="display: none;">
+                            <hr>
+                            <div class="hesaplama-panel">
+                                <h6 class="mb-3">Hesaplama Özeti</h6>
+                                <div class="hesaplama-item">
+                                    <small>Net Maaş</small>
+                                    <h5 class="mb-0" id="sonucNetMaas">0 ₺</h5>
+                                </div>
+                                <div class="hesaplama-item">
+                                    <small>Ücretsiz İzin Kesintisi</small>
+                                    <p class="mb-0" id="sonucIzinKesinti">0 ₺</p>
+                                </div>
+                                <div class="hesaplama-item">
+                                    <small>Fazla Mesai</small>
+                                    <p class="mb-0" id="sonucFazlaMesai">0 ₺</p>
+                                </div>
+                                <div class="hesaplama-item">
+                                    <small>Prim + Bonus</small>
+                                    <p class="mb-0" id="sonucEkOdeme">0 ₺</p>
+                                </div>
+                                <div class="hesaplama-item bg-warning text-dark">
+                                    <strong>Ödenecek Tutar</strong>
+                                    <h4 class="mb-0" id="sonucOdenecek">0 ₺</h4>
+                                </div>
+                                <button class="btn btn-success w-100 mt-3" onclick="maasKaydet()">
+                                    <i class="fas fa-save"></i> Hesaplamayı Kaydet
+                                </button>
+                                <small class="text-white-50 d-block mt-2">
+                                    <i class="fas fa-info-circle"></i> Kayıt sonrası ödeme için listeden "Öde" butonunu kullanın
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let personelListesi = [];
+        let mevcutHesaplama = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePage();
+        });
+
+        function initializePage() {
+            const currentYear = new Date().getFullYear();
+            const yilSelects = ['filterYil', 'hesaplaYil'];
+            
+            yilSelects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                for (let year = currentYear - 2; year <= currentYear + 1; year++) {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    if (year === currentYear) option.selected = true;
+                    select.appendChild(option);
+                }
+            });
+
+            const currentMonth = new Date().getMonth() + 1;
+            document.getElementById('filterAy').value = currentMonth;
+            document.getElementById('hesaplaAy').value = currentMonth;
+
+            loadPersonelList();
+        }
+
+        function loadPersonelList() {
+            fetch('/api/personel/liste?sadece_aktif=true')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        personelListesi = data.data;
+                        populatePersonelSelects();
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+
+        function populatePersonelSelects() {
+            const selects = ['filterPersonel', 'hesaplaPersonel'];
+            
+            selects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                const currentValue = select.value;
+                
+                if (selectId === 'filterPersonel') {
+                    select.innerHTML = '<option value="">Tüm Personel</option>';
+                } else {
+                    select.innerHTML = '<option value="">Seçiniz...</option>';
+                }
+                
+                personelListesi.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p.id;
+                    option.textContent = `${p.ad} ${p.soyad}`;
+                    option.dataset.personel = JSON.stringify(p);
+                    select.appendChild(option);
+                });
+                
+                if (currentValue) select.value = currentValue;
+            });
+        }
+
+        function maasListele() {
+            const yil = document.getElementById('filterYil').value;
+            const ay = document.getElementById('filterAy').value;
+            const personelId = document.getElementById('filterPersonel').value;
+
+            const params = new URLSearchParams();
+            if (yil) params.append('donem_yil', yil);
+            if (ay) params.append('donem_ay', ay);
+            if (personelId) params.append('personel_id', personelId);
+
+            const container = document.getElementById('maasListesi');
+            container.innerHTML = '<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</p>';
+
+            fetch(`/api/personel/maas/liste?${params}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        renderMaasListesi(data.data);
+                    } else {
+                        container.innerHTML = '<p class="text-center text-muted py-4">Bu döneme ait maaş ödemesi bulunamadı</p>';
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    container.innerHTML = '<p class="text-center text-danger py-4">Maaşlar yüklenemedi</p>';
+                });
+        }
+
+        function renderMaasListesi(maaslar) {
+		const container = document.getElementById('maasListesi');
+		console.log(maaslar);
+		console.log("Durum:", m.odeme_durumu, "Tutar:", m.odenecek_tutar);
+
+
+		// Toplamları hesapla
+		let toplamOdenecek = 0;
+		let toplamOdendi = 0;
+
+		maaslar.forEach(m => {
+			toplamOdenecek += parseFloat(m.odenecek_tutar || 0);
+			if (m.odeme_durumu === 'odendi') {
+				toplamOdendi += parseFloat(m.odenecek_tutar || 0);
+			}
+		});
+
+		// Toplam kutusu
+		let toplamHTML = `
+			<div class="alert alert-info d-flex justify-content-between align-items-center mb-3">
+				<div><strong>Toplam Ödenecek (Borç):</strong> ${formatCurrency(toplamOdenecek)}</div>
+				<div><strong>Toplam Ödenmiş (Alacak):</strong> ${formatCurrency(toplamOdendi)}</div>
+				<div><strong>Bekleyen:</strong> ${formatCurrency(toplamOdenecek - toplamOdendi)}</div>
+			</div>
+		`;
+
+		// Tablo
+		let html = '<div class="table-responsive"><table class="table table-hover">';
+		html += '<thead class="table-dark"><tr>';
+		html += '<th>Personel</th><th>Dönem</th><th>Net Maaş</th><th>Ödenecek</th><th>Durum</th><th>İşlemler</th>';
+		html += '</tr></thead><tbody>';
+
+		maaslar.forEach(m => {
+			const durum = m.odeme_durumu || 'beklemede';
+			const durumClass = durum === 'odendi' ? 'success' : 'warning';
+			const durumText = durum === 'odendi' ? 'Ödendi' : 'Bekliyor';
+
+			html += '<tr>';
+			html += `<td>${m.ad} ${m.soyad}</td>`;
+			html += `<td>${getAyAdi(m.donem_ay)} ${m.donem_yil}</td>`;
+			html += `<td>${formatCurrency(m.net_maas)}</td>`;
+			html += `<td><strong>${formatCurrency(m.odenecek_tutar)}</strong></td>`;
+			html += `<td><span class="badge bg-${durumClass}">${durumText}</span></td>`;
+			html += '<td>';
+			html += `<button class="btn btn-sm btn-outline-info me-1" onclick='maasDetay(${JSON.stringify(m)})'>
+						<i class="fas fa-info-circle"></i>
+					 </button>`;
+			if (durum === 'beklemede' && m.cari_id) {
+				html += `<a href="/cari_yonetimi" class="btn btn-sm btn-primary me-1">
+							<i class="fas fa-credit-card"></i>
+						 </a>`;
+			}
+			html += `<button class="btn btn-sm btn-danger" onclick="maasSil(${m.id}, '${m.ad} ${m.soyad}', '${getAyAdi(m.donem_ay)} ${m.donem_yil}')">
+						<i class="fas fa-trash"></i>
+					 </button>`;
+			html += '</td>';
+			html += '</tr>';
+		});
+
+		html += '</tbody></table></div>';
+
+		// Hem toplam kutusu hem tabloyu ekle
+		container.innerHTML = toplamHTML + html;
+	}
+
+
+        function maasSil(maasId, personelAdi, donem) {
+            if (!confirm(`${personelAdi} personelinin ${donem} dönemi maaş kaydını silmek istediğinizden emin misiniz?\n\nBu işlem:\n- Maaş kaydını\n- İlişkili cari hareketi\nkalıcı olarak silecektir.`)) {
+                return;
+            }
+            
+            const adminSifre = prompt("İşlemi onaylamak için admin şifrenizi girin:");
+            if (!adminSifre) {
+                showAlert('warning', 'İptal', 'İşlem iptal edildi');
+                return;
+            }
+            
+            fetch('/api/personel/maas/sil', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    maas_id: maasId,
+                    admin_sifre: adminSifre
+                })
+            })
+            .then(r => {
+                if (!r.ok) {
+                    return r.json().then(data => {
+                        throw new Error(data.error || 'Silme işlemi başarısız');
+                    });
+                }
+                return r.json();
+            })
+            .then(response => {
+                if (response.success) {
+                    showAlert('success', 'Başarılı', response.message);
+                    maasListele();
+                } else {
+                    showAlert('danger', 'Hata', response.error);
+                }
+            })
+            .catch(err => {
+                console.error('Maaş silme hatası:', err);
+                showAlert('danger', 'Hata', err.message);
+            });
+        }
+
+        function maasHesapla() {
+            const personelId = document.getElementById('hesaplaPersonel').value;
+            
+            if (!personelId) {
+                showAlert('warning', 'Uyarı', 'Lütfen personel seçin');
+                return;
+            }
+
+            const data = {
+                personel_id: parseInt(personelId),
+                donem_ay: parseInt(document.getElementById('hesaplaAy').value),
+                donem_yil: parseInt(document.getElementById('hesaplaYil').value),
+                ucretsiz_izin_gun: parseInt(document.getElementById('ucretsizIzin').value) || 0,
+                fazla_mesai_saat: parseFloat(document.getElementById('fazlaMesai').value) || 0,
+                prim: parseFloat(document.getElementById('prim').value) || 0,
+                bonus: parseFloat(document.getElementById('bonus').value) || 0
+            };
+
+            fetch('/api/personel/maas/hesapla', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(response => {
+                if (response.success) {
+                    mevcutHesaplama = {
+                        ...data,
+                        ...response.hesaplama
+                    };
+                    gosterHesaplamaSonuc(response.hesaplama);
+                } else {
+                    showAlert('danger', 'Hata', response.error);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showAlert('danger', 'Hata', 'Hesaplama yapılamadı');
+            });
+        }
+
+        function gosterHesaplamaSonuc(hesaplama) {
+            document.getElementById('sonucNetMaas').textContent = formatCurrency(hesaplama.net_maas);
+            document.getElementById('sonucIzinKesinti').textContent = formatCurrency(hesaplama.ucretsiz_izin_kesinti);
+            document.getElementById('sonucFazlaMesai').textContent = formatCurrency(hesaplama.fazla_mesai_ucret);
+            document.getElementById('sonucEkOdeme').textContent = formatCurrency(hesaplama.prim + hesaplama.bonus);
+            document.getElementById('sonucOdenecek').textContent = formatCurrency(hesaplama.odenecek_tutar);
+            
+            document.getElementById('hesaplamaSonuc').style.display = 'block';
+        }
+
+        function maasKaydet() {
+            if (!mevcutHesaplama) return;
+
+            const personelSelect = document.getElementById('hesaplaPersonel');
+            const selectedOption = personelSelect.options[personelSelect.selectedIndex];
+            const personel = JSON.parse(selectedOption.dataset.personel);
+
+            const kayitData = {
+                personel_id: mevcutHesaplama.personel_id,
+                donem_ay: mevcutHesaplama.donem_ay,
+                donem_yil: mevcutHesaplama.donem_yil,
+                brut_maas: mevcutHesaplama.brut_maas,
+                net_maas: mevcutHesaplama.net_maas,
+                ucretsiz_izin_gun: mevcutHesaplama.ucretsiz_izin_gun,
+                ucretsiz_izin_kesinti: mevcutHesaplama.ucretsiz_izin_kesinti,
+                fazla_mesai_saat: mevcutHesaplama.fazla_mesai_saat,
+                fazla_mesai_ucret: mevcutHesaplama.fazla_mesai_ucret,
+                prim: mevcutHesaplama.prim,
+                bonus: mevcutHesaplama.bonus,
+                odenecek_tutar: mevcutHesaplama.odenecek_tutar,
+                odeme_tarihi: new Date().toISOString().split('T')[0],
+                odeme_durumu: 'beklemede',
+                cari_id: personel.cari_id || null
+            };
+
+            fetch('/api/personel/maas/kaydet', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(kayitData)
+            })
+            .then(r => r.json())
+            .then(response => {
+                if (response.success) {
+                    showAlert('success', 'Başarılı', 'Maaş hesaplaması kaydedildi ve cari hesaba alacak olarak işlendi');
+                    document.getElementById('maasHesaplaForm').reset();
+                    document.getElementById('hesaplamaSonuc').style.display = 'none';
+                    mevcutHesaplama = null;
+                    maasListele();
+                } else {
+                    showAlert('danger', 'Hata', response.error);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showAlert('danger', 'Hata', 'Maaş kaydedilemedi');
+            });
+        }
+
+        function maasDetay(maas) {
+            const detay = `
+Personel: ${maas.ad} ${maas.soyad}
+Dönem: ${getAyAdi(maas.donem_ay)} ${maas.donem_yil}
+
+Net Maaş: ${formatCurrency(maas.net_maas)}
+Ücretsiz İzin: ${maas.ucretsiz_izin_gun} gün (${formatCurrency(maas.ucretsiz_izin_kesinti)})
+Fazla Mesai: ${maas.fazla_mesai_saat} saat (${formatCurrency(maas.fazla_mesai_ucret)})
+Prim: ${formatCurrency(maas.prim)}
+Bonus: ${formatCurrency(maas.bonus)}
+
+Ödenecek Tutar: ${formatCurrency(maas.odenecek_tutar)}
+Ödeme Tarihi: ${maas.odeme_tarihi || 'Henüz ödenmedi'}
+Durum: ${maas.odeme_durumu === 'odendi' ? 'Ödendi' : 'Ödeme Bekliyor'}
+            `;
+            
+            alert(detay);
+        }
+
+        function formatCurrency(amount) {
+            if (!amount && amount !== 0) return '0,00 ₺';
+            return parseFloat(amount).toLocaleString('tr-TR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }) + ' ₺';
+        }
+
+        function getAyAdi(ay) {
+            const aylar = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
+                          'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+            return aylar[ay] || ay;
+        }
+
+        function showAlert(type, title, message) {
+            const existingAlerts = document.querySelectorAll('.custom-alert');
+            existingAlerts.forEach(alert => alert.remove());
+            
+            const alertHTML = `
+                <div class="custom-alert alert alert-${type} alert-dismissible fade show position-fixed" 
+                     style="top: 20px; right: 20px; z-index: 9999; min-width: 350px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                    <h6 class="alert-heading mb-2">${title}</h6>
+                    <p class="mb-0">${message}</p>
+                    <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', alertHTML);
+            setTimeout(() => document.querySelector('.custom-alert')?.remove(), 8000);
+        }
+    </script>
+</body>
+</html>

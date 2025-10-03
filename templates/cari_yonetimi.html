@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cari Hesap Yönetimi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+        }
+        
+        body { background-color: #f8f9fa; }
+        
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 1.5rem;
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            font-weight: 600;
+        }
+        
+        .table-hover tbody tr:hover {
+            background-color: rgba(102, 126, 234, 0.05);
+        }
+        
+        .bakiye-alacak { color: var(--success-color); font-weight: 600; }
+        .bakiye-borc { color: var(--danger-color); font-weight: 600; }
+        
+        .table-alacak { background-color: #f0fff0; }
+        .table-borc { background-color: #fff0f0; }
+        
+        .eslestirme-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--info-color);
+        }
+        
+        .btn-gradient {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border: none;
+            color: white;
+        }
+        
+        .btn-gradient:hover {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+            color: white;
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+        }
+        
+        .badge-cari { font-size: 0.85rem; padding: 0.4rem 0.6rem; }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+        }
+        
+        .custom-alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 350px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h2><i class="fas fa-wallet"></i> Cari Hesap & Ödeme Yönetimi</h2>
+                    <p class="mb-0 opacity-75">Hekim primleri ve personel maaşları için borç-alacak takibi</p>
+                </div>
+                <div class="col-auto">
+                    <a href="/" class="btn btn-light">
+                        <i class="fas fa-home"></i> Ana Sayfa
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <!-- İstatistikler -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="text-muted">Toplam Cari Sayısı</div>
+                    <div class="stat-value text-primary" id="statToplamCari">0</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="text-muted">Toplam Alacak</div>
+                    <div class="stat-value text-success" id="statToplamAlacak">0 ₺</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="text-muted">Toplam Borç</div>
+                    <div class="stat-value text-danger" id="statToplamBorc">0 ₺</div>
+                </div>
+            </div>
+        </div>
+<!-- Filtreler -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-2">
+        <label class="form-label">Dönem Yıl</label>
+        <select class="form-select" id="filterYil">
+          <!-- JS ile doldurulacak -->
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Dönem Ay</label>
+        <select class="form-select" id="filterAy">
+          <option value="1">Ocak</option>
+          <option value="2">Şubat</option>
+          <option value="3">Mart</option>
+          <option value="4">Nisan</option>
+          <option value="5">Mayıs</option>
+          <option value="6">Haziran</option>
+          <option value="7">Temmuz</option>
+          <option value="8">Ağustos</option>
+          <option value="9">Eylül</option>
+          <option value="10">Ekim</option>
+          <option value="11">Kasım</option>
+          <option value="12">Aralık</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Personel</label>
+        <select class="form-select" id="filterPersonel">
+          <option value="">Tüm Personel</option>
+          <!-- JS ile doldurulacak -->
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Cari Türü</label>
+        <select class="form-select" id="filterCariTuru">
+          <option value="">Tüm Türler</option>
+          <!-- JS ile doldurulacak -->
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Alt Türü</label>
+        <select class="form-select" id="filterAltTuru" disabled>
+          <option value="">Tüm Alt Türler</option>
+          <!-- JS ile doldurulacak -->
+        </select>
+      </div>
+
+      <div class="col-md-2 d-grid">
+        <label class="form-label">&nbsp;</label>
+        <button class="btn btn-primary" onclick="maasListele()">
+          <i class="fas fa-search"></i> Listele
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Maaş Listesi Sonuç Alanı -->
+<div class="card mb-4">
+  <div class="card-header">
+    <i class="fas fa-money-check-alt"></i> Maaş Listesi
+  </div>
+  <div class="card-body" id="maasListesi">
+    <p class="text-muted mb-0">Filtreleri seçip “Listele”ye tıklayın.</p>
+  </div>
+</div>
+
+        <div class="row">	
+            <!-- Sol Taraf: Cari Listesi -->
+            <div class="col-lg-7">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-list"></i> Cari Hesaplar</h5>
+                        <button class="btn btn-sm btn-light" onclick="loadCariList()">
+                            <i class="fas fa-sync"></i> Yenile
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Cari Kodu / ID</th>
+                                        <th>Cari Adı</th>
+                                        <th class="text-end">Bakiye</th>
+                                        <th class="text-center">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cariTableBody">
+                                    <tr>
+                                        <td colspan="4" class="text-center py-5">
+                                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                                            <p class="mt-2 text-muted">Yükleniyor...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sağ Taraf: Cari Formu -->
+            <div class="col-lg-5">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-plus-circle"></i> Yeni Cari Ekle / Düzenle</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="cariForm">
+                            <input type="hidden" id="cariId">
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Cari Kodu <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="cariKodu" required placeholder="Örn: HEKIM-001">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Cari Adı <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="cariAdi" required placeholder="Örn: Dr. Ahmet Yılmaz">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Telefon</label>
+                                <input type="text" class="form-control" id="cariTelefon" placeholder="555 123 45 67">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">E-posta</label>
+                                <input type="email" class="form-control" id="cariEmail" placeholder="ornek@email.com">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Notlar</label>
+                                <textarea class="form-control" id="cariNotlar" rows="2" placeholder="Ek bilgiler..."></textarea>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="button" id="cariKaydetBtn" class="btn btn-gradient">
+                                    <i class="fas fa-save"></i> Cari Kaydet / Güncelle
+                                </button>
+                                <button type="button" id="cariTemizleBtn" class="btn btn-outline-secondary" style="display:none;">
+                                    <i class="fas fa-times"></i> Formu Temizle
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Hekim Eşleştirme Kartı (Dinamik Gösterilir) -->
+                <div class="card" id="eslestirmeCard" style="display:none;">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="fas fa-link"></i> Hekim Eşleştirme</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-muted mb-3" id="eslestirilenCariAdi">Seçili Cari: -</p>
+                        
+                        <form id="eslestirmeForm">
+                            <div class="mb-3">
+                                <label class="form-label">Şube</label>
+                                <select class="form-select" id="eslestirmeSube" required>
+                                    <option value="">Şube seçiniz...</option>
+                                    {% for branch in branches %}
+                                    <option value="{{ branch.id }}">{{ branch.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Hekim</label>
+                                <select class="form-select" id="eslestirmeDoktor" required disabled>
+                                    <option value="">Önce şube seçiniz...</option>
+                                </select>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-info text-white">
+                                    <i class="fas fa-link"></i> Hekimi Bağla
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <hr>
+                        
+                        <h6 class="text-muted mb-2">Mevcut Eşleştirmeler:</h6>
+                        <div id="eslestirmelerListesi">
+                            <p class="text-muted small">Yükleniyor...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cari Hareketler Modal -->
+    <div class="modal fade" id="hareketModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title mb-0" id="modalCariAdi">Cari Hareketleri</h5>
+                        <small class="opacity-75" id="mevcutBakiyeBilgi">Bakiye: -</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Sol: Ödeme Formu -->
+                        <div class="col-md-4">
+                            <div class="card border-danger">
+                                <div class="card-header bg-danger text-white">
+                                    <h6 class="mb-0"><i class="fas fa-money-bill-wave"></i> Ödeme Yap</h6>
+                                </div>
+                                <div class="card-body">
+                                    <form id="odemeForm">
+                                        <input type="hidden" id="hareketCariId">
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Tarih</label>
+                                            <input type="date" class="form-control" id="odemeTarih" required>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Ödeme Şekli</label>
+                                            <select class="form-select" id="odemeSekli" required>
+                                                <option value="">Seçiniz...</option>
+                                                <option value="Nakit">Nakit</option>
+                                                <option value="Banka Transferi">Banka Transferi</option>
+                                                <option value="POS">POS Cihazı</option>
+                                                <option value="Çek">Çek</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Tutar (₺)</label>
+                                            <input type="number" class="form-control" id="odemeTutar" step="0.01" min="0.01" required>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Açıklama</label>
+                                            <textarea class="form-control" id="odemeAciklama" rows="2" required></textarea>
+                                        </div>
+                                        
+                                        <div class="d-grid">
+                                            <button type="submit" class="btn btn-danger">
+                                                <i class="fas fa-arrow-alt-circle-down"></i> Ödeme Yap (Borç İşle)
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sağ: Hareket Listesi -->
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0"><i class="fas fa-history"></i> Hareket Geçmişi</h6>
+                                    <button class="btn btn-sm btn-light" onclick="printCariEkstre()">
+                                        <i class="fas fa-print"></i> Ekstre Yazdır
+                                    </button>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                        <table class="table table-sm table-hover mb-0">
+                                            <thead class="table-light sticky-top">
+                                                <tr>
+                                                    <th>Tarih</th>
+                                                    <th>Tip</th>
+                                                    <th>Açıklama</th>
+                                                    <th class="text-end">Alacak</th>
+                                                    <th class="text-end">Borç</th>
+                                                    <th class="text-end">Bakiye</th>
+                                                    <th class="text-center">İşlem</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="hareketTableBody">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hareket Düzenleme Modal -->
+    <div class="modal fade" id="duzeltmeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title text-dark">
+                        <i class="fas fa-edit"></i> Hareket Düzenle / Sil
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info" id="duzeltmeBilgi"></div>
+                    
+                    <form id="duzeltmeForm">
+                        <input type="hidden" id="duzeltmeId">
+                        <input type="hidden" id="duzeltmeCariId">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Tarih</label>
+                            <input type="date" class="form-control" id="duzeltmeTarih" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Açıklama</label>
+                            <textarea class="form-control" id="duzeltmeAciklama" rows="2" required></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Alacak (₺)</label>
+                                    <input type="number" class="form-control" id="duzeltmeAlacak" step="0.01" min="0" required>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Borç (₺)</label>
+                                    <input type="number" class="form-control" id="duzeltmeBorc" step="0.01" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger me-auto" onclick="deleteHareket()">
+                        <i class="fas fa-trash"></i> Hareketi Sil
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-warning" onclick="saveDüzeltme()">
+                        <i class="fas fa-save"></i> Değişiklikleri Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/cari_yonetimi.js') }}"></script>
+</body>
+</html>

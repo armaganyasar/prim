@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Hasta-Hekim Analiz</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        .card-hover {
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+        .kategori-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+        }
+        .icon-container {
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            border-radius: 50%;
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+        }
+        .btn-custom {
+            border-radius: 25px;
+            padding: 10px 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container my-5">
+        <div class="card p-4 shadow-sm">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex align-items-center">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-image me-3" style="height: 60px;">
+                    <div>
+                        <h1 class="text-primary mb-0 h3">Diş Kliniği Yönetim Sistemi</h1>
+                        <small class="text-muted">Hoş geldiniz, {{ session.get('username') }}</small>
+                    </div>
+                </div>
+                <div>
+                    <span class="badge bg-info me-2">{{ session.get('username') }} ({{ session.get('role') }})</span>
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-sign-out-alt"></i> Çıkış Yap
+                    </a>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="mb-4">
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <!-- ==================== RANDEVU SİSTEMİ ==================== -->
+            <div class="kategori-header">
+                <h4 class="mb-0"><i class="fas fa-calendar-check me-2"></i> Randevu Sistemi</h4>
+            </div>
+            
+            <div class="row g-4 mb-5">
+                <div class="col-md-6">
+                    <div class="card card-hover h-100">
+                        <div class="card-body text-center d-flex flex-column">
+                            <div class="icon-container">
+                                <i class="fas fa-calendar-alt text-info" style="font-size: 2rem;"></i>
+                            </div>
+                            <h5 class="card-title">Randevu Takvimi</h5>
+                            <p class="card-text flex-grow-1">Hasta randevularını görüntüleyin ve takvim üzerinde takip edin.</p>
+                            <a href="/randevu" class="btn btn-info text-white btn-custom">
+                                <i class="fas fa-calendar-alt me-2"></i> Takvimi Aç
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card card-hover h-100">
+                        <div class="card-body text-center d-flex flex-column">
+                            <div class="icon-container">
+                                <i class="fas fa-cog text-secondary" style="font-size: 2rem;"></i>
+                            </div>
+                            <h5 class="card-title">Takvim Ayarları</h5>
+                            <p class="card-text flex-grow-1">Randevu takvimi görünümü, renkler ve çalışma saatlerini ayarlayın.</p>
+                            <a href="/ayarlar" class="btn btn-secondary btn-custom">
+                                <i class="fas fa-cog me-2"></i> Ayarlar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== HEKİM PRİM SİSTEMİ ==================== -->
+            <div class="kategori-header">
+                <h4 class="mb-0"><i class="fas fa-user-md me-2"></i> Hekim Prim Sistemi</h4>
+            </div>
+            
+            <div class="row g-4 mb-5">
+                <div class="col-md-4">
+                    <div class="card card-hover h-100">
+                        <div class="card-body text-center d-flex flex-column">
+                            <div class="icon-container">
+                                <i class="fas fa-money-check-alt text-success" style="font-size: 2rem;"></i>
+                            </div>
+                            <h5 class="card-title">Tahsilatlar</h5>
+                            <p class="card-text flex-grow-1">Ödeme takibi, kesinti oranları ve prim analizi.</p>
+                            <a href="/tahsilatlar" class="btn btn-success btn-custom">
+                                <i class="fas fa-money-check-alt me-2"></i> Tahsilat Analizi
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card card-hover h-100">
+                        <div class="card-body text-center d-flex flex-column">
+                            <div class="icon-container">
+                                <i class="fas fa-calculator text-warning" style="font-size: 2rem;"></i>
+                            </div>
+                            <h5 class="card-title">Prim Hesaplama</h5>
+                            <p class="card-text flex-grow-1">Hekim primlerini hesaplayın ve giderleri düşürün.</p>
+                            <a href="/primler" class="btn btn-warning text-white btn-custom">
+                                <i class="fas fa-calculator me-2"></i> Prim Hesapla
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card card-hover h-100">
+                        <div class="card-body text-center d-flex flex-column">
+                            <div class="icon-container">
+                                <i class="fas fa-list-alt text-primary" style="font-size: 2rem;"></i>
+                            </div>
+                            <h5 class="card-title">Prim Listesi</h5>
+                            <p class="card-text flex-grow-1">Hesaplanmış primleri listeleyin ve raporlar oluşturun.</p>
+                            <a href="/prim_listesi" class="btn btn-primary btn-custom">
+                                <i class="fas fa-list-alt me-2"></i> Prim Listesi
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                {% if session.get('role') == 'admin' %}
+                <div class="col-md-12">
+                    <div class="card card-hover h-100">
+                        <div class="card-body text-center d-flex flex-column">
+                            <div class="icon-container">
+                                <i class="fas fa-wallet text-dark" style="font-size: 2rem;"></i>
+                            </div>
+                            <h5 class="card-title">Cari Hesap Yönetimi</h5>
+                            <p class="card-text flex-grow-1">Hekimlerin borç ve alacak bakiyelerini takip edin, ödeme yapın.</p>
+                            <a href="/cari_yonetimi" class="btn btn-dark btn-custom">
+                                <i class="fas fa-wallet me-2"></i> Cariyi Yönet
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- ==================== PERSONEL SİSTEMİ ==================== -->
+            {% if session.get('role') == 'admin' %}
+            <div class="kategori-header">
+                <h4 class="mb-0"><i class="fas fa-users me-2"></i> Personel Yönetim Sistemi</h4>
+            </div>
+            
+            <div class="row g-4 mb-5">
+                <div class="col-md-4">
+                    <div class="card card-hover h-100">
+                        <div class="card-body text-center d-flex flex-column">
+                            <div class="icon-container">
+                                <i class="fas fa-id-card text-primary" style="font-size: 2rem;"></i>
+                            </div>
+                            <h5 class="card-title">Personel Kayıtları</h5>
+                            <p class="card-text flex-grow-1">Personel bilgilerini yönetin, yeni personel ekleyin.</p>
+                            <a href="/personel" class="btn btn-primary btn-custom">
+                                <i class="fas fa-id-card me-2"></i> Personel Listesi
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card card-hover h-100">
+                        <div class="card-body text-center d-flex flex-column">
+                            <div class="icon-container">
+                                <i class="fas fa-money-bill-wave text-success" style="font-size: 2rem;"></i>
+                            </div>
+                            <h5 class="card-title">Maaş Yönetimi</h5>
+                            <p class="card-text flex-grow-1">Personel maaşlarını hesaplayın ve ödemeleri kaydedin.</p>
+                            <a href="/maas_yonetimi" class="btn btn-success btn-custom">
+                                <i class="fas fa-money-bill-wave me-2"></i> Maaş Yönet
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card card-hover h-100">
+                        <div class="card-body text-center d-flex flex-column">
+                            <div class="icon-container">
+                                <i class="fas fa-calendar-check text-info" style="font-size: 2rem;"></i>
+                            </div>
+                            <h5 class="card-title">İzin Takibi</h5>
+                            <p class="card-text flex-grow-1">Personel izinlerini görüntüleyin (Personel detayında).</p>
+                            <a href="/personel" class="btn btn-info btn-custom">
+                                <i class="fas fa-calendar-check me-2"></i> İzinler
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ==================== ANALİZ ARAÇLARI ==================== -->
+            <div class="kategori-header">
+                <h4 class="mb-0"><i class="fas fa-chart-line me-2"></i> Analiz Araçları</h4>
+            </div>
+            
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <div class="card card-hover h-100">
+                        <div class="card-body text-center d-flex flex-column">
+                            <div class="icon-container">
+                                <i class="fas fa-notes-medical text-danger" style="font-size: 2rem;"></i>
+                            </div>
+                            <h5 class="card-title">Tedaviler Analizi</h5>
+                            <p class="card-text flex-grow-1">Hasta-hekim tedavi ilişkilerini ve çoklu hekim durumlarını inceleyin.</p>
+                            <a href="/tedaviler" class="btn btn-danger btn-custom">
+                                <i class="fas fa-notes-medical me-2"></i> Tedavi Analizi
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                {% if session.get('role') == 'admin' %}
+                <div class="col-md-6">
+                    <div class="card card-hover h-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <div class="card-body text-center d-flex flex-column">
+                            <div class="icon-container" style="background: rgba(255,255,255,0.2);">
+                                <i class="fas fa-users-cog text-white" style="font-size: 2rem;"></i>
+                            </div>
+                            <h5 class="card-title">Kullanıcı Yönetimi</h5>
+                            <p class="card-text flex-grow-1">Sistem kullanıcılarını yönetin (Randevu sayfasında).</p>
+                            <a href="/randevu" class="btn btn-light btn-custom">
+                                <i class="fas fa-users-cog me-2"></i> Kullanıcılar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Kartların animasyonlu yüklenmesi
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card-hover');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    card.style.transition = 'all 0.5s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 50);
+            });
+        });
+    </script>
+</body>
+</html>

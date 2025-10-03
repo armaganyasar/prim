@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prim Listesi - Hekim Prim Yönetimi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+    <style>
+        /* CSS kodları olduğu gibi bırakıldı */
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-custom {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            border: none;
+            color: white;
+        }
+        
+        .btn-custom:hover {
+            background: linear-gradient(45deg, #0056b3, #004085);
+            color: white;
+        }
+        
+        .table-hover tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .filter-card {
+            border-left: 4px solid #007bff;
+        }
+        
+        .prim-amount {
+            font-weight: bold;
+            color: #28a745;
+        }
+        
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .admin-danger-zone {
+            border: 2px solid #dc3545;
+            border-radius: 8px;
+            background-color: #f8d7da;
+        }
+        
+        .prim-detail-row {
+            background-color: #f8f9fa;
+            border-left: 3px solid #17a2b8;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container-fluid mt-4">
+        <div class="row mb-4">
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2><i class="fas fa-list text-primary"></i> Kaydedilmiş Primler</h2>
+                        <p class="text-muted">Tüm hekim primlerini görüntüleyin, detaylarını inceleyin</p>
+                    </div>
+                    <div>
+                        <span class="badge bg-info me-2">{{ session.get('username') }} ({{ session.get('role') }})</span>
+                        <a href="/primler" class="btn btn-outline-success me-2">
+                            <i class="fas fa-plus"></i> Yeni Prim Hesapla
+                        </a>
+                        <a href="{{ url_for('home') }}" class="btn btn-outline-primary me-2">
+                            <i class="fas fa-home"></i> Ana Sayfa
+                        </a>
+                        <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">
+                            <i class="fas fa-sign-out-alt"></i> Çıkış
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card filter-card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-filter"></i> Filtreler</h5>
+            </div>
+            <div class="card-body">
+                <form id="filterForm">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label class="form-label">Şube</label>
+                            <select class="form-select" id="filterSube">
+                                <option value="">Tüm Şubeler</option>
+                                </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Hekim</label>
+                            <select class="form-select" id="filterDoktor" disabled>
+                                <option value="">Önce şube seçiniz</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Başlangıç Tarihi</label>
+                            <input type="date" class="form-control" id="filterBaslangic">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Bitiş Tarihi</label>
+                            <input type="date" class="form-control" id="filterBitis">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-custom w-100">
+                                <i class="fas fa-search"></i> Filtrele
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Primler yükleniyor...</p>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <h5><i class="fas fa-calculator"></i> Prim Kayıtları</h5>
+                <div>
+                    <span class="badge bg-light text-dark" id="toplamKayit">0 kayıt</span>
+                    <span class="badge bg-success" id="toplamTutar">Toplam: 0 TL</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="primTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Hekim</th>
+                                <th>Şube</th>
+                                <th>Dönem</th>
+                                <th>Brüt Tahsilat</th>
+                                <th>Net Tahsilat</th>
+                                <th>Hesaplanan Prim</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="primTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">
+                                    Henüz prim kaydı bulunamadı
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <nav aria-label="Prim listesi sayfalama" id="paginationContainer" style="display: none;">
+                    <ul class="pagination justify-content-center" id="pagination">
+                        </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="primDetayModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Prim Detayları</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="primDetayContent">
+                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" class="btn btn-primary" onclick="printPrimDetay()">
+                        <i class="fas fa-print"></i> Yazdır
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="adminSilModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle"></i> Tehlikeli İşlem
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="admin-danger-zone p-3 mb-3">
+                        <h6 class="text-danger">⚠️ DİKKAT: Bu işlem geri alınamaz!</h6>
+                        <p class="mb-0">Bu prim kaydını silmek istediğinizden emin misiniz?</p>
+                    </div>
+                    
+                    <div id="silinecekPrimBilgi" class="alert alert-info">
+                        </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-danger fw-bold">
+                            Silme işlemini onaylamak için admin şifrenizi girin:
+                        </label>
+                        <input type="password" class="form-control" id="adminSifresi" placeholder="Admin şifresi">
+                        <div class="invalid-feedback" id="sifreHata"></div>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="silmeOnay">
+                        <label class="form-check-label text-danger" for="silmeOnay">
+                            Bu kayıtı silmek istediğimi onaylıyorum
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-danger" id="kesinSilBtn" disabled>
+                        <i class="fas fa-trash"></i> Kesin Sil
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/prim_listesi.js') }}"></script>
+</body>
+</html>

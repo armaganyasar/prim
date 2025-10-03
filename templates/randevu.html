@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Randevu Takvimi</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <style>
+        .event-popover {
+            max-width: 300px;
+        }
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .hekim-assignment-row {
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            margin-bottom: 10px;
+        }
+        .assignment-preview {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+        .user-role-badge {
+            font-size: 0.8em;
+        }
+        .modal-body {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .hekim-selector {
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            padding: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .form-check-input:checked {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .calendar-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            padding: 20px;
+        }
+        .filter-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .settings-btn {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+        }
+        .settings-btn:hover {
+            background: linear-gradient(45deg, #764ba2 0%, #667eea 100%);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .fc-event {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .fc-event:hover {
+            transform: scale(1.02);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        /* Takvim stil iyileştirmeleri */
+        .fc-toolbar-title {
+            font-size: 1.5em !important;
+            font-weight: 600;
+        }
+        .fc-button {
+            border-radius: 6px !important;
+        }
+        .fc-button-primary {
+            background-color: #0d6efd !important;
+            border-color: #0d6efd !important;
+        }
+        .fc-button-primary:hover {
+            background-color: #0b5ed7 !important;
+            border-color: #0a58ca !important;
+        }
+        .notification-badge {
+            position: relative;
+        }
+        .notification-badge::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 8px;
+            height: 8px;
+            background-color: #dc3545;
+            border-radius: 50%;
+            display: none;
+        }
+        .notification-badge.has-notification::after {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container-fluid my-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">📅 Randevu Takvimi</h2>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-info user-role-badge">{{ session.get('username') }} ({{ session.get('role') }})</span>
+                
+                <!-- Bildirimler -->
+                <button class="btn btn-outline-secondary notification-badge" id="notificationBtn" title="Bildirimler">
+                    <i class="fas fa-bell"></i>
+                </button>
+                
+                <!-- Takvim Ayarları -->
+                <a href="{{ url_for('ayarlar') }}" class="btn settings-btn" title="Takvim Ayarları">
+                    <i class="fas fa-cog"></i> Ayarlar
+                </a>
+                
+                {% if session.get('role') == 'admin' %}
+                <!-- Admin Kullanıcı Yönetimi -->
+                <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#userModal" title="Kullanıcı Yönetimi">
+                    <i class="fas fa-users-cog"></i> Kullanıcılar
+                </button>
+                
+                <!-- Ana Sayfa -->
+                <a href="{{ url_for('home') }}" class="btn btn-outline-primary" title="Ana Sayfa">
+                    <i class="fas fa-home"></i> Ana Sayfa
+                </a>
+                {% endif %}
+                
+                <!-- Çıkış -->
+                <a href="{{ url_for('logout') }}" class="btn btn-danger" title="Çıkış Yap">
+                    <i class="fas fa-sign-out-alt"></i> Çıkış
+                </a>
+            </div>
+        </div>
+        
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="mb-3">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Filtreler (Admin ve User için) -->
+        {% if session.get('role') in ['admin', 'user'] %}
+        <div class="filter-card">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="sube_select" class="form-label fw-bold">
+                        <i class="fas fa-building"></i> Şube Seçimi
+                    </label>
+                    <select class="form-select" id="sube_select">
+                        <option value="">Tüm Şubeler</option>
+                    </select>
+                </div>
+                <div class="col-md-5 mb-3">
+                    <label for="doktor_select_container" class="form-label fw-bold">
+                        <i class="fas fa-user-md"></i> Doktor Seçimi
+                    </label>
+                    <div id="doktor_select_container" class="form-control" style="min-height: 38px; max-height: 120px; overflow-y: auto;">
+                        <p class="text-muted mb-0 small">Önce bir şube seçin</p>
+                    </div>
+                </div>
+                <div class="col-md-3 d-flex align-items-end mb-3">
+                    <div class="btn-group w-100" role="group">
+                        <button class="btn btn-primary" id="filtrele" title="Filtreleri Uygula">
+                            <i class="fas fa-filter"></i> Filtrele
+                        </button>
+                        <button class="btn btn-outline-secondary" id="temizle" title="Filtreleri Temizle">
+                            <i class="fas fa-times"></i> Temizle
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hızlı Filtreler -->
+            <div class="row mt-2">
+                <div class="col-12">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-sm btn-outline-info" id="filterToday">
+                            <i class="fas fa-calendar-day"></i> Bugün
+                        </button>
+                        <button class="btn btn-sm btn-outline-info" id="filterWeek">
+                            <i class="fas fa-calendar-week"></i> Bu Hafta
+                        </button>
+                        <button class="btn btn-sm btn-outline-info" id="filterMonth">
+                            <i class="fas fa-calendar-alt"></i> Bu Ay
+                        </button>
+                        <div class="vr"></div>
+                        <button class="btn btn-sm btn-outline-success" id="exportCalendar">
+                            <i class="fas fa-download"></i> Dışa Aktar
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" id="refreshCalendar">
+                            <i class="fas fa-sync-alt"></i> Yenile
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Takvim Container -->
+        <div class="calendar-container">
+            <!-- Takvim Araç Çubuğu -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <h5 class="mb-0">Randevu Takvimi</h5>
+                    <div class="d-flex gap-2">
+                        <!-- Renk Göstergeleri -->
+                        <span class="badge" style="background-color: #0d6efd;" title="Normal Randevu">Normal</span>
+                        <span class="badge" style="background-color: #dc3545;" title="Acil Randevu">Acil</span>
+                        <span class="badge" style="background-color: #198754;" title="Tamamlanan">Tamamlanan</span>
+                        <span class="badge" style="background-color: #6c757d;" title="İptal Edilen">İptal</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <small class="text-muted" id="eventCount">Toplam Randevu: 0</small>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                        <label class="form-check-label" for="autoRefresh">Otomatik Yenile</label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Takvim -->
+            <div id="calendar"></div>
+        </div>
+
+        {% if session.get('role') == 'admin' %}
+        <!-- Admin Kullanıcı Yönetimi Modalı -->
+        <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="userModalLabel">Kullanıcı Yönetimi</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Yeni Kullanıcı Ekleme Kartı -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">Yeni Kullanıcı Ekle</h6>
+                            </div>
+                            <div class="card-body">
+                                <form id="addUserForm">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label for="new_username" class="form-label">Kullanıcı Adı *</label>
+                                            <input type="text" class="form-control" id="new_username" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="new_password" class="form-label">Şifre *</label>
+                                            <input type="password" class="form-control" id="new_password" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="new_role" class="form-label">Rol *</label>
+                                            <select class="form-select" id="new_role" required>
+                                                <option value="">Rol Seçin</option>
+                                                <option value="user">Kullanıcı</option>
+                                                <option value="doktor">Doktor</option>
+                                                <option value="admin">Admin</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <!-- Doktor ID Container -->
+                                        <div class="col-12" id="doktor_select_container_new" style="display: none;">
+                                            <label class="form-label">Doktor Seçimi *</label>
+                                            <select class="form-select" id="new_doktor_id">
+                                                <option value="">Doktor Seçin</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <!-- Hekim Atamaları Container -->
+                                        <div class="col-12" id="hekimler_container" style="display: none;">
+                                            <label class="form-label">Hekim Atamaları *</label>
+                                            <p class="text-muted small mb-2">Bu kullanıcının erişebileceği hekimleri seçin</p>
+                                            <div id="hekimler_assignment_area">
+                                                <!-- Dinamik hekim atama alanı -->
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" id="addHekimAssignmentBtn">
+                                                <i class="fas fa-plus"></i> Yeni Atama Ekle
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="col-12 text-end">
+                                            <button type="submit" class="btn btn-success">
+                                                <i class="fas fa-plus"></i> Kullanıcı Ekle
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Mevcut Kullanıcılar -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Mevcut Kullanıcılar</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="userTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Kullanıcı Adı</th>
+                                                <th>Rol</th>
+                                                <th>Atamalar</th>
+                                                <th width="120">İşlemler</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td colspan="4" class="text-center">
+                                                    <div class="spinner-border spinner-border-sm" role="status">
+                                                        <span class="visually-hidden">Yükleniyor...</span>
+                                                    </div>
+                                                    <span class="ms-2">Kullanıcılar yükleniyor...</span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kullanıcı Düzenleme Modalı -->
+        <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editUserModalLabel">Kullanıcıyı Düzenle</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editUserForm">
+                            <input type="hidden" id="edit_username_hidden">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="edit_username" class="form-label">Kullanıcı Adı</label>
+                                    <input type="text" class="form-control" id="edit_username" disabled>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit_password" class="form-label">Yeni Şifre</label>
+                                    <input type="password" class="form-control" id="edit_password" placeholder="Şifreyi değiştirmek istemiyorsanız boş bırakın">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit_role" class="form-label">Rol</label>
+                                    <select class="form-select" id="edit_role" required>
+                                        <option value="user">Kullanıcı</option>
+                                        <option value="doktor">Doktor</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Edit Doktor Container -->
+                                <div class="col-12" id="edit_doktor_select_container" style="display: none;">
+                                    <label class="form-label">Doktor Seçimi</label>
+                                    <select class="form-select" id="edit_doktor_id">
+                                        <option value="">Doktor Seçin</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Edit Hekim Atamaları -->
+                                <div class="col-12" id="edit_hekimler_container" style="display: none;">
+                                    <label class="form-label">Hekim Atamaları</label>
+                                    <div id="edit_hekimler_assignment_area">
+                                        <!-- Dinamik hekim atama alanı -->
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="editAddHekimAssignmentBtn">
+                                        <i class="fas fa-plus"></i> Yeni Atama Ekle
+                                    </button>
+                                </div>
+                                
+                                <div class="col-12 text-end">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save"></i> Güncelle
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global değişkenler
+        let calendar = null;
+        let calendarSettings = {};
+        let autoRefreshInterval = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApplication();
+        });
+
+        async function initializeApplication() {
+            // Ayarları yükle
+            await loadCalendarSettings();
+            
+            // Takvimi başlat
+            initializeCalendar();
+            
+            // Filtreleme işlevselliğini başlat
+            {% if session.get('role') in ['admin', 'user'] %}
+            initializeFiltering();
+            {% endif %}
+            
+            // Admin panelini başlat
+            {% if session.get('role') == 'admin' %}
+            initializeAdminPanel();
+            {% endif %}
+            
+            // Hızlı filtreleri başlat
+            initializeQuickFilters();
+            
+            // Otomatik yenilemeyi başlat
+            initializeAutoRefresh();
+        }
+
+        async function loadCalendarSettings() {
+            try {
+                const response = await fetch('/api/calendar/settings');
+                if (response.ok) {
+                    const result = await response.json();
+                    calendarSettings = result.settings || {};
+                } else {
+                    console.warn('Ayarlar yüklenemedi, varsayılan ayarlar kullanılıyor');
+                }
+            } catch (error) {
+                console.warn('Ayarlar yüklenirken hata:', error);
+            }
+            
+            // Varsayılan ayarları ekle
+            calendarSettings = {
+                defaultView: 'dayGridMonth',
+                startTime: '08:00',
+                endTime: '18:00',
+                slotDuration: '30',
+                showWeekends: true,
+                showAllDay: false,
+                appointmentColor: '#0d6efd',
+                urgentColor: '#dc3545',
+                completedColor: '#198754',
+                cancelledColor: '#6c757d',
+                language: 'tr',
+                weekStart: '1',
+                timeFormat: '24',
+                enableNotifications: true,
+                reminderMinutes: 30,
+                branchColors: [],
+                ...calendarSettings
+            };
+        }
+
+        function initializeCalendar() {
+            const calendarEl = document.getElementById('calendar');
+
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: calendarSettings.defaultView,
+                locale: calendarSettings.language,
+                firstDay: parseInt(calendarSettings.weekStart),
+                weekends: calendarSettings.showWeekends,
+                allDaySlot: calendarSettings.showAllDay,
+                slotDuration: `00:${calendarSettings.slotDuration}:00`,
+                slotMinTime: calendarSettings.startTime + ':00',
+                slotMaxTime: calendarSettings.endTime + ':00',
+                height: 'auto',
+                expandRows: true,
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                buttonText: {
+                    today: 'Bugün',
+                    month: 'Ay',
+                    week: 'Hafta',
+                    day: 'Gün'
+                },
+                eventSources: [{
+                    url: '/api/events',
+                    failure: function() {
+                        showNotification('Randevular yüklenirken bir hata oluştu!', 'error');
+                    },
+                    color: calendarSettings.appointmentColor,
+                    textColor: 'white'
+                }],
+                eventDidMount: function(info) {
+                    applyEventStyling(info);
+                    attachEventPopover(info);
+                },
+                eventSourceSuccess: function(content, xhr) {
+                    updateEventCount(content.length);
+                },
+                loading: function(isLoading) {
+                    if (isLoading) {
+                        document.body.classList.add('loading');
+                    } else {
+                        document.body.classList.remove('loading');
+                    }
+                }
+            });
+
+            calendar.render();
+        }
+
+        function applyEventStyling(info) {
+            const eventType = info.event.extendedProps.type || 'normal';
+            const subeId = info.event.extendedProps.sube_id;
+            let backgroundColor = calendarSettings.appointmentColor;
+            
+            // Şube bazlı renk kontrolü
+            if (calendarSettings.branchColors && calendarSettings.branchColors.length > 0) {
+                const branchColor = calendarSettings.branchColors.find(bc => bc.sube_id === subeId);
+                if (branchColor) {
+                    backgroundColor = branchColor.color;
+                }
+            }
+            
+            // Randevu tipi bazlı renk override
+            switch(eventType) {
+                case 'urgent':
+                    backgroundColor = calendarSettings.urgentColor;
+                    break;
+                case 'completed':
+                    backgroundColor = calendarSettings.completedColor;
+                    break;
+                case 'cancelled':
+                    backgroundColor = calendarSettings.cancelledColor;
+                    break;
+            }
+            
+            info.el.style.backgroundColor = backgroundColor;
+            info.el.style.borderColor = backgroundColor;
+        }
+
+        function attachEventPopover(info) {
+            const startTime = new Date(info.event.start).toLocaleTimeString('tr-TR', {
+                hour: '2-digit', 
+                minute: '2-digit'
+            });
+            
+            const endTime = info.event.end ? new Date(info.event.end).toLocaleTimeString('tr-TR', {
+                hour: '2-digit', 
+                minute: '2-digit'
+            }) : '';
+
+            const popover = new bootstrap.Popover(info.el, {
+                title: `<i class="fas fa-calendar-check"></i> ${info.event.title}`,
+                content: `
+                    <div class="popover-content">
+                        <p class="mb-1"><i class="fas fa-user-md"></i> <strong>Doktor:</strong> ${info.event.extendedProps.doktor || 'Belirtilmemiş'}</p>
+                        <p class="mb-1"><i class="fas fa-building"></i> <strong>Şube:</strong> ${info.event.extendedProps.sube || 'Belirtilmemiş'}</p>
+                        <p class="mb-1"><i class="fas fa-clock"></i> <strong>Saat:</strong> ${startTime}${endTime ? ' - ' + endTime : ''}</p>
+                        ${info.event.extendedProps.telefon ? `<p class="mb-0"><i class="fas fa-phone"></i> <strong>Tel:</strong> ${info.event.extendedProps.telefon}</p>` : ''}
+                    </div>
+                `,
+                html: true,
+                trigger: 'hover focus',
+                placement: 'top',
+                customClass: 'event-popover'
+            });
+        }
+
+        function updateEventCount(count) {
+            document.getElementById('eventCount').textContent = `Toplam Randevu: ${count}`;
+        }
+
+        {% if session.get('role') in ['admin', 'user'] %}
+        function initializeFiltering() {
+            const subeSelect = document.getElementById('sube_select');
+            const doktorSelectContainer = document.getElementById('doktor_select_container');
+            const filtreleBtn = document.getElementById('filtrele');
+            const temizleBtn = document.getElementById('temizle');
+
+            // Şubeleri yükle
+            loadBranches();
+
+            // Event listeners
+            subeSelect.addEventListener('change', handleBranchChange);
+            filtreleBtn.addEventListener('click', applyFilters);
+            temizleBtn.addEventListener('click', clearFilters);
+
+            async function loadBranches() {
+                try {
+                    const response = await fetch('/api/branches');
+                    const branches = await response.json();
+                    
+                    subeSelect.innerHTML = '<option value="">Tüm Şubeler</option>';
+                    branches.forEach(sube => {
+                        subeSelect.innerHTML += `<option value="${sube.id}">${sube.name}</option>`;
+                    });
+                } catch (error) {
+                    console.error('Şubeler yüklenirken hata:', error);
+                }
+            }
+
+            async function handleBranchChange() {
+                const subeId = subeSelect.value;
+                doktorSelectContainer.innerHTML = '';
+                
+                if (subeId) {
+                    try {
+                        {% if session.get('role') == 'user' %}
+                        // Kullanıcı rolü ise sadece atanmış doktorları göster
+                        const assignmentsResponse = await fetch('/api/me/assignments');
+                        const assignments = await assignmentsResponse.json();
+                        const filteredDoctors = assignments.filter(a => a.sube_id === subeId);
+                        
+                        if (filteredDoctors.length > 0) {
+                            const doctorsResponse = await fetch(`/api/doctors?sube_id=${subeId}`);
+                            const allDoctors = await doctorsResponse.json();
+                            
+                            let checkboxHtml = '';
+                            filteredDoctors.forEach(assigned => {
+                                const doctor = allDoctors.find(d => d.id === assigned.doktor_id);
+                                if (doctor) {
+                                    checkboxHtml += createDoctorCheckbox(doctor);
+                                }
+                            });
+                            
+                            doktorSelectContainer.innerHTML = checkboxHtml || '<p class="text-muted mb-0 small">Atanmış doktor bulunamadı.</p>';
+                        } else {
+                            doktorSelectContainer.innerHTML = '<p class="text-muted mb-0 small">Bu şubeye atanmış doktorunuz yok.</p>';
+                        }
+                        {% else %}
+                        // Admin rolü ise tüm doktorları göster
+                        const response = await fetch(`/api/doctors?sube_id=${subeId}`);
+                        const doctors = await response.json();
+                        
+                        let checkboxHtml = '';
+                        doctors.forEach(doctor => {
+                            checkboxHtml += createDoctorCheckbox(doctor);
+                        });
+                        
+                        doktorSelectContainer.innerHTML = checkboxHtml || '<p class="text-muted mb-0 small">Bu şubede doktor bulunamadı.</p>';
+                        {% endif %}
+                    } catch (error) {
+                        console.error('Doktorlar yüklenirken hata:', error);
+                        doktorSelectContainer.innerHTML = '<p class="text-danger mb-0 small">Doktorlar yüklenirken hata oluştu.</p>';
+                    }
+                } else {
+                    doktorSelectContainer.innerHTML = '<p class="text-muted mb-0 small">Önce bir şube seçin</p>';
+                }
+            }
+
+            function createDoctorCheckbox(doctor) {
+                return `
+                    <div class="form-check form-check-inline me-3 mb-2">
+                        <input class="form-check-input" type="checkbox" id="doktor_${doctor.id}" value="${doctor.id}">
+                        <label class="form-check-label" for="doktor_${doctor.id}">${doctor.name}</label>
+                    </div>
+                `;
+            }
+
+            function applyFilters() {
+                const sube = subeSelect.value;
+                const selectedDoctors = Array.from(document.querySelectorAll('#doktor_select_container input[type="checkbox"]:checked'))
+                                            .map(cb => cb.value);
+                
+                let url = '/api/events';
+                const params = [];
+                
+                if (sube) params.push(`sube_id=${encodeURIComponent(sube)}`);
+                if (selectedDoctors.length > 0) {
+                    params.push(`doktor_id=${encodeURIComponent(selectedDoctors.join(','))}`);
+                }
+                
+                if (params.length > 0) {
+                    url += '?' + params.join('&');
+                }
+                
+                updateCalendarSource(url);
+            }
+
+            function clearFilters() {
+                subeSelect.value = '';
+                doktorSelectContainer.innerHTML = '<p class="text-muted mb-0 small">Önce bir şube seçin</p>';
+                updateCalendarSource('/api/events');
+            }
+        }
+        {% endif %}
+
+        function initializeQuickFilters() {
+            document.getElementById('filterToday')?.addEventListener('click', () => {
+                calendar.changeView('timeGridDay');
+                calendar.gotoDate(new Date());
+            });
+
+            document.getElementById('filterWeek')?.addEventListener('click', () => {
+                calendar.changeView('timeGridWeek');
+                calendar.gotoDate(new Date());
+            });
+
+            document.getElementById('filterMonth')?.addEventListener('click', () => {
+                calendar.changeView('dayGridMonth');
+                calendar.gotoDate(new Date());
+            });
+
+            document.getElementById('exportCalendar')?.addEventListener('click', exportCalendarData);
+            document.getElementById('refreshCalendar')?.addEventListener('click', () => {
+                calendar.refetchEvents();
+                showNotification('Takvim yenilendi', 'success');
+            });
+        }
+
+        function initializeAutoRefresh() {
+            const autoRefreshCheckbox = document.getElementById('autoRefresh');
+            
+            function toggleAutoRefresh() {
+                if (autoRefreshCheckbox.checked) {
+                    autoRefreshInterval = setInterval(() => {
+                        calendar.refetchEvents();
+                    }, 60000); // Her dakika
+                } else {
+                    if (autoRefreshInterval) {
+                        clearInterval(autoRefreshInterval);
+                        autoRefreshInterval = null;
+                    }
+                }
+            }
+            
+            autoRefreshCheckbox.addEventListener('change', toggleAutoRefresh);
+            toggleAutoRefresh(); // Başlangıçta etkinleştir
+        }
+
+        function updateCalendarSource(url) {
+            calendar.removeAllEventSources();
+            calendar.addEventSource({
+                url: url,
+                color: calendarSettings.appointmentColor,
+                textColor: 'white',
+                failure: function() {
+                    showNotification('Randevular yüklenirken bir hata oluştu!', 'error');
+                }
+            });
+            calendar.refetchEvents();
+        }
+
+        function exportCalendarData() {
+            const events = calendar.getEvents();
+            const exportData = events.map(event => ({
+                title: event.title,
+                start: event.start,
+                end: event.end,
+                doktor: event.extendedProps.doktor,
+                sube: event.extendedProps.sube
+            }));
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `randevular_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('Takvim verileri dışa aktarıldı', 'success');
+        }
+
+        function showNotification(message, type = 'info') {
+            const alertClass = type === 'error' ? 'alert-danger' : 
+                              type === 'success' ? 'alert-success' : 
+                              type === 'warning' ? 'alert-warning' : 'alert-info';
+            
+            const alert = document.createElement('div');
+            alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+            alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(alert);
+            
+            // 5 saniye sonra otomatik kaldır
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+
+        {% if session.get('role') == 'admin' %}
+        function initializeAdminPanel() {
+            const userModal = new bootstrap.Modal(document.getElementById('userModal'));
+            const editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            const userTableBody = document.querySelector('#userTable tbody');
+            const addUserForm = document.getElementById('addUserForm');
+            const editUserForm = document.getElementById('editUserForm');
+
+            let allDoctors = [];
+            let allBranches = [];
+            
+            // Tüm hekimleri ve şubeleri çek
+            Promise.all([
+                fetch('/api/doctors').then(res => res.json()),
+                fetch('/api/branches').then(res => res.json())
+            ]).then(([doctorsData, branchesData]) => {
+                allDoctors = doctorsData;
+                allBranches = branchesData;
+            });
+
+            function fetchUsers() {
+                fetch('/api/admin/users')
+                    .then(res => res.json())
+                    .then(users => {
+                        userTableBody.innerHTML = '';
+                        users.forEach(user => {
+                            const row = userTableBody.insertRow();
+                            row.innerHTML = `
+                                <td><strong>${user.username}</strong></td>
+                                <td><span class="badge ${getRoleBadgeClass(user.role)}">${getRoleText(user.role)}</span></td>
+                                <td><div class="assignment-preview">${getAssignmentsText(user)}</div></td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning me-1 edit-user-btn" data-username="${user.username}"><i class="fas fa-edit"></i></button>
+                                    <button class="btn btn-sm btn-danger delete-user-btn" data-username="${user.username}"><i class="fas fa-trash"></i></button>
+                                </td>
+                            `;
+                        });
+                    });
+            }
+
+            function getRoleBadgeClass(role) {
+                switch (role) {
+                    case 'admin': return 'bg-danger';
+                    case 'doktor': return 'bg-success';
+                    case 'user': return 'bg-primary';
+                    default: return 'bg-secondary';
+                }
+            }
+
+            function getRoleText(role) {
+                switch (role) {
+                    case 'admin': return 'Admin';
+                    case 'doktor': return 'Doktor';
+                    case 'user': return 'Kullanıcı';
+                    default: return role;
+                }
+            }
+
+            function getAssignmentsText(user) {
+                if (user.role === 'doktor') {
+                    const doctor = allDoctors.find(d => d.id === user.doktor_id);
+                    if (doctor) {
+                        const branch = allBranches.find(b => b.id === doctor.SUBE_ID);
+                        return `<strong>Hekim:</strong> ${doctor.name}<br><small class="text-muted">Şube: ${branch ? branch.name : 'Bilinmeyen'}</small>`;
+                    }
+                    return `<span class="text-danger">Hekim: ${user.doktor_id || 'Atanmamış'}</span>`;
+                } else if (user.role === 'user') {
+                    if (user.hekimler && user.hekimler.length > 0) {
+                        const assignments = user.hekimler.slice(0, 2).map(h => {
+                            const doctor = allDoctors.find(d => d.id === h.doktor_id);
+                            const branch = allBranches.find(b => b.id === h.sube_id);
+                            return `${branch ? branch.name : h.sube_id}: ${doctor ? doctor.name : h.doktor_id}`;
+                        });
+                        
+                        let text = assignments.join('<br>');
+                        if (user.hekimler.length > 2) {
+                            text += `<br><small class="text-muted">+${user.hekimler.length - 2} diğer atama</small>`;
+                        }
+                        return text;
+                    } else {
+                        return '<span class="text-warning">Atama Yok</span>';
+                    }
+                }
+                return '<span class="text-muted">-</span>';
+            }
+            
+            // Hekim atama satırı oluşturma fonksiyonu
+            function createHekimAssignmentRow(containerId, subeId = '', doktorIds = []) {
+                const container = document.getElementById(containerId);
+                const row = document.createElement('div');
+                row.className = 'hekim-assignment-row';
+                
+                const branchOptions = allBranches.map(b => `<option value="${b.id}" ${b.id === subeId ? 'selected' : ''}>${b.name}</option>`).join('');
+                
+                row.innerHTML = `
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-4">
+                            <label class="form-label small">Şube</label>
+                            <select class="form-select form-select-sm sube-select-input">
+                                <option value="">Şube Seçin</option>
+                                ${branchOptions}
+                            </select>
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label small">Hekimler</label>
+                            <div class="hekim-selector" style="min-height: 38px;">
+                                <div class="text-muted small">Önce şube seçin</div>
+                            </div>
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="button" class="btn btn-sm btn-danger remove-hekim-btn" style="margin-top: 24px;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                const subeSelect = row.querySelector('.sube-select-input');
+                const hekimSelector = row.querySelector('.hekim-selector');
+                const removeBtn = row.querySelector('.remove-hekim-btn');
+
+                // Şube seçimi değiştiğinde hekim listesini güncelle
+                subeSelect.addEventListener('change', function() {
+                    const selectedSubeId = this.value;
+                    updateHekimSelector(selectedSubeId, hekimSelector);
+                });
+
+                removeBtn.addEventListener('click', function() {
+                    row.remove();
+                });
+
+                container.appendChild(row);
+
+                // Eğer başlangıçta şube seçiliyse, hekimleri de yükle
+                if (subeId) {
+                    updateHekimSelector(subeId, hekimSelector, doktorIds);
+                }
+            }
+
+            function updateHekimSelector(subeId, hekimSelector, selectedIds = []) {
+                if (!subeId) {
+                    hekimSelector.innerHTML = '<div class="text-muted small">Önce şube seçin</div>';
+                    return;
+                }
+
+                const doctorsInBranch = allDoctors.filter(doc => doc.SUBE_ID === subeId);
+                
+                if (doctorsInBranch.length === 0) {
+                    hekimSelector.innerHTML = '<div class="text-muted small">Bu şubede hekim bulunamadı</div>';
+                    return;
+                }
+
+                let checkboxHtml = '';
+                doctorsInBranch.forEach(doctor => {
+                    const isChecked = selectedIds.includes(doctor.id) ? 'checked' : '';
+                    const uniqueId = `hekim_${doctor.id}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+                    checkboxHtml += `
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="${doctor.id}" id="${uniqueId}" ${isChecked}>
+                            <label class="form-check-label" for="${uniqueId}">
+                                ${doctor.name}
+                            </label>
+                        </div>
+                    `;
+                });
+
+                hekimSelector.innerHTML = checkboxHtml;
+            }
+            
+            // Event listeners
+            document.getElementById('addHekimAssignmentBtn').addEventListener('click', () => createHekimAssignmentRow('hekimler_assignment_area'));
+            document.getElementById('editAddHekimAssignmentBtn').addEventListener('click', () => createHekimAssignmentRow('edit_hekimler_assignment_area'));
+
+            // Rol değiştiğinde atanacak hekimler alanını göster/gizle
+            document.getElementById('new_role').addEventListener('change', function() {
+                const role = this.value;
+                document.getElementById('doktor_select_container_new').style.display = role === 'doktor' ? 'block' : 'none';
+                document.getElementById('hekimler_container').style.display = role === 'user' ? 'block' : 'none';
+                
+                if (role === 'doktor') {
+                    populateDoctorSelect('new_doktor_id');
+                }
+            });
+
+            document.getElementById('edit_role').addEventListener('change', function() {
+                const role = this.value;
+                document.getElementById('edit_doktor_select_container').style.display = role === 'doktor' ? 'block' : 'none';
+                document.getElementById('edit_hekimler_container').style.display = role === 'user' ? 'block' : 'none';
+                
+                if (role === 'doktor') {
+                    populateDoctorSelect('edit_doktor_id');
+                }
+            });
+
+            function populateDoctorSelect(selectId) {
+                const select = document.getElementById(selectId);
+                select.innerHTML = '<option value="">Doktor Seçin</option>';
+                
+                allDoctors.forEach(doctor => {
+                    const branch = allBranches.find(b => b.id === doctor.SUBE_ID);
+                    const branchName = branch ? branch.name : 'Bilinmeyen Şube';
+                    select.innerHTML += `<option value="${doctor.id}">${doctor.name} (${branchName})</option>`;
+                });
+            }
+            
+            // Kullanıcı Ekleme Formu Submit
+            addUserForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const username = document.getElementById('new_username').value;
+                const password = document.getElementById('new_password').value;
+                const role = document.getElementById('new_role').value;
+                
+                let data = { username, password, role };
+                
+                if (role === 'doktor') {
+                    data.doktor_id = document.getElementById('new_doktor_id').value;
+                } else if (role === 'user') {
+                    const hekimler = getHekimAssignments('hekimler_assignment_area');
+                    data.hekimler = hekimler;
+                }
+
+                fetch('/api/admin/users/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                .then(res => res.json())
+                .then(result => {
+                    if (result.success) {
+                        showNotification(result.message, 'success');
+                        addUserForm.reset();
+                        document.getElementById('doktor_select_container_new').style.display = 'none';
+                        document.getElementById('hekimler_container').style.display = 'none';
+                        document.getElementById('hekimler_assignment_area').innerHTML = '';
+                        fetchUsers();
+                    } else {
+                        showNotification('Hata: ' + result.error, 'error');
+                    }
+                });
+            });
+
+            function getHekimAssignments(containerId) {
+                const container = document.getElementById(containerId);
+                const assignments = [];
+                
+                container.querySelectorAll('.hekim-assignment-row').forEach(row => {
+                    const subeId = row.querySelector('.sube-select-input').value;
+                    const selectedHekimler = Array.from(
+                        row.querySelectorAll('.hekim-selector input[type="checkbox"]:checked')
+                    ).map(cb => cb.value);
+                    
+                    if (subeId && selectedHekimler.length > 0) {
+                        selectedHekimler.forEach(doktorId => {
+                            assignments.push({ sube_id: subeId, doktor_id: doktorId });
+                        });
+                    }
+                });
+                
+                return assignments;
+            }
+
+            // Modal açıldığında kullanıcıları yükle
+            document.getElementById('userModal').addEventListener('shown.bs.modal', fetchUsers);
+            
+            // Kullanıcı düzenleme ve silme event listeners'ları burada eklenecek...
+            // (Mevcut kodunuzdaki gibi)
+        }
+        {% endif %}
+    </script>
+</body>
+</html>

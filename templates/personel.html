@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personel Yönetimi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        .personel-card {
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .personel-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .personel-foto {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+        .personel-foto-detay {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+        .badge-pozisyon {
+            font-size: 0.85rem;
+        }
+        .section-header {
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container-fluid py-4">
+        <div class="row mb-4">
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2><i class="fas fa-users text-primary"></i> Personel Yönetimi</h2>
+                        <p class="text-muted mb-0">Personel kayıtları, maaş ve izin yönetimi</p>
+                    </div>
+                    <div>
+                        <a href="/" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-home"></i> Ana Sayfa
+                        </a>
+                        <button class="btn btn-primary" onclick="yeniPersonelModal()">
+                            <i class="fas fa-user-plus"></i> Yeni Personel Ekle
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Şube</label>
+                        <select class="form-select" id="filterSube">
+                            <option value="">Tüm Şubeler</option>
+                            {% for branch in branches %}
+                            <option value="{{ branch.id }}">{{ branch.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Pozisyon</label>
+                        <select class="form-select" id="filterPozisyon">
+						<option value="">Tüm Pozisyonlar</option>
+						<option value="hekim">Hekim</option>
+						<option value="yonetici">Yönetici</option>
+						<option value="sekreter">Sekreter</option>
+						<option value="banko_gorevlisi">Banko Görevlisi</option>
+						<option value="temizlik">Temizlik Görevlisi</option>
+						<option value="hasta_karsilama">Hasta Karşılama</option>
+						<option value="muhasebe">Muhasebe</option>
+						<option value="it_destek">IT Destek</option>
+						<option value="laboratuvar">Laboratuvar Teknisyeni</option>
+						<option value="rontgen">Röntgen Teknisyeni</option>
+						<option value="diger">Diğer</option>
+					</select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Durum</label>
+                        <select class="form-select" id="filterDurum">
+                            <option value="aktif">Sadece Aktif</option>
+                            <option value="tumu">Tümü</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <button class="btn btn-primary w-100" onclick="personelListele()">
+                            <i class="fas fa-filter"></i> Filtrele
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row" id="personelListesi">
+            <div class="col-12 text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Yükleniyor...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personel Ekleme/Düzenleme Modal -->
+    <div class="modal fade" id="personelModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="personelModalTitle">Yeni Personel Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="personelForm">
+                        <input type="hidden" id="personelId">
+                        
+                        <div class="section-header">
+                            <h6 class="text-primary mb-0"><i class="fas fa-user"></i> Kişisel Bilgiler</h6>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">T.C. Kimlik No <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="tcKimlik" maxlength="11" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Ad <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="ad" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Soyad <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="soyad" required>
+                            </div>
+                        </div>
+						<div class="row mb-3">
+							<div class="col-md-6">
+								<label class="form-label">Hesap Numarası (IBAN)</label>
+								<input type="text" class="form-control" id="hesapNumarasi" 
+									   placeholder="TR00 0000 0000 0000 0000 0000 00" maxlength="26">
+							</div>
+							<div class="col-md-6">
+								<label class="form-label">SGK Sicil No</label>
+								<input type="text" class="form-control" id="sgkSicilNo">
+							</div>
+						</div>						
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Doğum Tarihi</label>
+                                <input type="date" class="form-control" id="dogumTarihi">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Cinsiyet</label>
+                                <select class="form-select" id="cinsiyet">
+                                    <option value="">Seçiniz</option>
+                                    <option value="Erkek">Erkek</option>
+                                    <option value="Kadın">Kadın</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Telefon</label>
+                                <input type="text" class="form-control" id="telefon">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">E-posta</label>
+                                <input type="email" class="form-control" id="email">
+                            </div>
+                        </div>
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <label class="form-label">Adres</label>
+                                <textarea class="form-control" id="adres" rows="2"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="section-header">
+                            <h6 class="text-primary mb-0"><i class="fas fa-phone-alt"></i> Acil Durum İletişim</h6>
+                        </div>
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label">Kişi Adı</label>
+                                <input type="text" class="form-control" id="acilKisi">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Telefon</label>
+                                <input type="text" class="form-control" id="acilTelefon">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Yakınlık</label>
+                                <input type="text" class="form-control" id="acilYakinlik" placeholder="Örn: Eş, Anne, Kardeş">
+                            </div>
+                        </div>
+
+                        <div class="section-header">
+                            <h6 class="text-primary mb-0"><i class="fas fa-briefcase"></i> İş Bilgileri</h6>
+                        </div>
+                       <div class="row mb-3">
+						<div class="col-md-4">
+							<label class="form-label">Şube <span class="text-danger">*</span></label>
+							<select class="form-select" id="subeId" required>
+								<option value="">Seçiniz</option>
+								{% for branch in branches %}
+								<option value="{{ branch.id }}">{{ branch.name }}</option>
+								{% endfor %}
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Departman</label>
+							<input type="text" class="form-control" id="departman" placeholder="Örn: Ön Büro, Lab">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Pozisyon <span class="text-danger">*</span></label>
+							<select class="form-select" id="pozisyon" required onchange="pozisyonDegisti()">
+								<option value="">Seçiniz</option>
+								<option value="hekim">Hekim</option>
+								<option value="yonetici">Yönetici</option>
+								<option value="sekreter">Sekreter</option>
+								<option value="banko_gorevlisi">Banko Görevlisi</option>
+								<option value="temizlik">Temizlik Görevlisi</option>
+								<option value="hasta_karsilama">Hasta Karşılama</option>
+								<option value="muhasebe">Muhasebe</option>
+								<option value="it_destek">IT Destek</option>
+								<option value="laboratuvar">Laboratuvar Teknisyeni</option>
+								<option value="rontgen">Röntgen Teknisyeni</option>
+								<option value="diger">Diğer</option>
+							</select>
+						</div>
+					</div>
+					<div class="row mb-2">
+						<div class="col-md-12">
+							<div class="alert alert-info py-2 mb-0">
+								<i class="fas fa-info-circle"></i> 
+								<strong>Not:</strong> Hekim pozisyonu seçilirse maaş bilgileri zorunlu olmaz (prim sistemiyle çalışırlar).
+							</div>
+						</div>
+					</div>
+                        <div class="row mb-3">
+                          <div class="col-md-3">
+							<label class="form-label">İşe Başlama Tarihi <span class="text-danger">*</span></label>
+							<input type="date" class="form-control" id="iseBaslamaTarihi" required>
+						</div>
+						<div class="col-md-3">
+							<label class="form-label">SGK Başlangıç Tarihi</label>
+							<input type="date" class="form-control" id="sgkBaslangicTarihi">
+							<small class="text-muted">İşe başlamadan farklı olabilir</small>
+						</div>
+                            <div class="col-md-4">
+                                <label class="form-label">Tecrübe Durumu</label>
+                                <select class="form-select" id="tecrubeDurumu">
+                                    <option value="yeni">Yeni</option>
+                                    <option value="deneyimli">Deneyimli</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Deneme Süresi (Gün)</label>
+                                <input type="number" class="form-control" id="denemeSuresi" value="0">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="cariOlustur" checked>
+                                    <label class="form-check-label" for="cariOlustur">
+                                        Bu personel için otomatik cari hesap oluştur
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+						<div class="section-header mt-4">
+							<h6 class="text-primary mb-0"><i class="fas fa-camera"></i> Fotoğraf</h6>
+						</div>
+						
+						<div class="row mb-3">
+							<div class="col-md-12">
+								<label class="form-label">Personel Fotoğrafı</label>
+								<input type="file" class="form-control" id="fotografInput" accept="image/*">
+								<small class="text-muted">Max 5MB - PNG, JPG, JPEG, GIF formatları</small>
+								
+								<div id="fotografOnizleme" class="mt-3" style="display:none;">
+									<label class="form-label">Önizleme:</label><br>
+									<img id="onizlemeImg" class="img-thumbnail" style="max-width:200px; max-height:200px;">
+									<button type="button" class="btn btn-sm btn-danger ms-2" onclick="fotografSil()">
+										<i class="fas fa-trash"></i> Kaldır
+									</button>
+								</div>
+							</div>
+						</div>
+						<div class="section-header mt-4">
+							<h6 class="text-primary mb-0">
+								<i class="fas fa-money-bill-wave"></i> Maaş Bilgileri
+								<small class="text-muted ms-2">(Hekim ise zorunlu değil)</small>
+							</h6>
+						</div>
+
+						<div id="maasBilgileriSection">
+							<div class="row mb-3">
+								<div class="col-md-3">
+									<label class="form-label">Brüt Maaş <span class="text-danger maas-required">*</span></label>
+									<input type="number" class="form-control maas-field" id="brutMaas" step="0.01" min="0">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Net Maaş <span class="text-danger maas-required">*</span></label>
+									<input type="number" class="form-control maas-field" id="netMaas" step="0.01" min="0">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Yol Yardımı</label>
+									<input type="number" class="form-control maas-field" id="yolYardimi" value="0" step="0.01" min="0">
+								</div>
+								<div class="col-md-3">
+									<label class="form-label">Yemek Yardımı</label>
+									<input type="number" class="form-control maas-field" id="yemekYardimi" value="0" step="0.01" min="0">
+								</div>
+							</div>
+							<div class="row mb-3">
+								<div class="col-md-4">
+									<label class="form-label">Çocuk Yardımı</label>
+									<input type="number" class="form-control maas-field" id="cocukYardimi" value="0" step="0.01" min="0">
+								</div>
+								<div class="col-md-4">
+									<label class="form-label">Diğer Ödenekler</label>
+									<input type="number" class="form-control maas-field" id="digerOdenekler" value="0" step="0.01" min="0">
+								</div>
+								<div class="col-md-4">
+									<label class="form-label">Maaş Başlangıç Tarihi <span class="text-danger maas-required">*</span></label>
+									<input type="date" class="form-control maas-field" id="maasBaslangicTarihi">
+								</div>
+							</div>
+						</div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" onclick="personelKaydet()">
+                        <i class="fas fa-save"></i> Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personel Detay Modal (Basitleştirilmiş - sadece temel bilgiler) -->
+    <div class="modal fade" id="detayModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <div>
+                        <h5 class="modal-title mb-0" id="detayModalTitle">Personel Detayı</h5>
+                        <small id="detayModalSubtitle" class="text-white-50"></small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="card mb-3 bg-light">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <div id="detayFotoContainer">
+                                        <div class="personel-foto-detay bg-secondary text-white d-flex align-items-center justify-content-center mx-auto">
+                                            <i class="fas fa-user fa-3x"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <h4 id="detayAdSoyad" class="mb-1"></h4>
+                                    <p class="text-muted mb-2" id="detayTcKimlik"></p>
+                                    <div id="detayDurumBadges"></div>
+                                </div>
+                                <div class="col-auto">
+                                    <button class="btn btn-warning" onclick="personelDuzenle()">
+                                        <i class="fas fa-edit"></i> Bilgileri Düzenle
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link active" id="genelBilgiler-tab" data-bs-toggle="tab" href="#genelBilgilerContent" role="tab" aria-controls="genelBilgilerContent" aria-selected="true">
+                                <i class="fas fa-info-circle me-1"></i> Genel Bilgiler
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="izinler-tab" data-bs-toggle="tab" href="#izinlerContent" role="tab" aria-controls="izinlerContent" aria-selected="false">
+                                <i class="fas fa-calendar-check me-1"></i> İzinler
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="maasGecmisi-tab" data-bs-toggle="tab" href="#maasGecmisiContent" role="tab" aria-controls="maasGecmisiContent" aria-selected="false">
+                                <i class="fas fa-history me-1"></i> Maaş Geçmişi
+                            </a>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="genelBilgilerContent" role="tabpanel" aria-labelledby="genelBilgiler-tab">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-primary mb-3"><i class="fas fa-user"></i> Kişisel & İletişim Bilgileri</h6>
+                                    <table class="table table-sm" id="genelBilgilerTable"></table>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-primary mb-3"><i class="fas fa-briefcase"></i> İş & SGK Bilgileri</h6>
+                                    <table class="table table-sm" id="isBilgileriTable"></table>
+                                </div>
+                            </div>
+                            </div>
+
+                        <div class="tab-pane fade" id="izinlerContent" role="tabpanel" aria-labelledby="izinler-tab">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-1"></i> İzin yönetimi ve geçmişi bu sekmede görüntülenecektir. Şu an için sadece yer tutucudur.
+                            </div>
+                            </div>
+
+                        <div class="tab-pane fade" id="maasGecmisiContent" role="tabpanel" aria-labelledby="maasGecmisi-tab">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-1"></i> Maaş değişiklikleri, primler ve bordro geçmişi bu sekmede görüntülenecektir. Şu an için sadece yer tutucudur.
+                            </div>
+                            </div>
+                    </div>
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Silme Onay Modal - DÜZELTİLMİŞ -->
+    <div class="modal fade" id="silmeOnayModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Personel Silme Onayı</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Dikkat!</strong> Bu işlem geri alınamaz.
+                    </div>
+                    <p id="silmeOnayMetni" class="mb-3"></p>
+                    <input type="hidden" id="silinecekPersonelId">
+                    
+                    <div class="mb-3">
+                        <label for="adminSifreInput" class="form-label fw-bold">
+                            <i class="fas fa-lock"></i> Admin Şifresi <span class="text-danger">*</span>
+                        </label>
+                        <input type="password" class="form-control" id="adminSifreInput" 
+                               placeholder="Silme işlemini onaylamak için şifrenizi girin" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> İptal
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="personelSilOnayli()">
+                        <i class="fas fa-trash"></i> Evet, Sil
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let personelModal, detayModal, silmeOnayModal;
+    let mevcutPersonelId = null;
+    let mevcutPersonelData = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        personelModal = new bootstrap.Modal(document.getElementById('personelModal'));
+        detayModal = new bootstrap.Modal(document.getElementById('detayModal'));
+        silmeOnayModal = new bootstrap.Modal(document.getElementById('silmeOnayModal'));
+        personelListele();
+    });
+
+    function personelListele() {
+        const subeId = document.getElementById('filterSube').value;
+        const durum = document.getElementById('filterDurum').value;
+        const pozisyon = document.getElementById('filterPozisyon').value;
+
+        const params = new URLSearchParams({
+            sadece_aktif: durum === 'aktif' ? 'true' : 'false'
+        });
+
+        if (subeId) params.append('sube_id', subeId);
+
+        fetch(`/api/personel/liste?${params}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    let personeller = data.data;
+                    
+                    if (pozisyon) {
+                        personeller = personeller.filter(p => p.pozisyon === pozisyon);
+                    }
+
+                    renderPersonelListesi(personeller);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showAlert('danger', 'Hata', 'Personel listesi yüklenemedi');
+            });
+    }
+
+    function renderPersonelListesi(personeller) {
+        const container = document.getElementById('personelListesi');
+
+        if (personeller.length === 0) {
+            container.innerHTML = `
+                <div class="col-12 text-center py-5">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">Henüz personel kaydı bulunmuyor</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = personeller.map(p => `
+            <div class="col-md-4 col-lg-3 mb-4">
+                <div class="card personel-card h-100">
+                    <div class="card-body text-center d-flex flex-column">
+                        <div class="mb-3" onclick="personelDetay(${p.id})">
+                            ${p.fotograf ? 
+                                `<img src="data:image/jpeg;base64,${p.fotograf}" class="personel-foto" alt="${p.ad}">` :
+                                `<div class="personel-foto mx-auto bg-secondary text-white d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-user fa-2x"></i>
+                                </div>`
+                            }
+                        </div>
+                        <h6 class="card-title mb-1">${p.ad} ${p.soyad}</h6>
+                        <p class="text-muted small mb-2">${p.tc_kimlik}</p>
+                        <span class="badge badge-pozisyon ${getBadgeClass(p.pozisyon)}">${getPozisyonAdi(p.pozisyon)}</span>
+                        ${p.calisma_durumu === 'aktif' ? 
+                            '<span class="badge bg-success ms-1">Aktif</span>' : 
+                            '<span class="badge bg-secondary ms-1">Pasif</span>'
+                        }
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-outline-primary" onclick="personelDetay(${p.id})">
+                                <i class="fa fa-info-circle"></i> Detay
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deletePersonel(${p.id}, '${escapeHtml(p.ad)} ${escapeHtml(p.soyad)}')">
+                                <i class="fa fa-trash"></i> Sil
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function getBadgeClass(pozisyon) {
+        const classes = {
+            'hekim': 'bg-primary',
+            'sekreter': 'bg-info',
+            'temizlik': 'bg-warning',
+            'diger': 'bg-secondary'
+        };
+        return classes[pozisyon] || 'bg-secondary';
+    }
+
+    function getPozisyonAdi(pozisyon) {
+        const adlar = {
+            'hekim': 'Hekim',
+            'yonetici': 'Yönetici',
+            'sekreter': 'Sekreter',
+            'banko_gorevlisi': 'Banko Görevlisi',
+            'temizlik': 'Temizlik Görevlisi',
+            'hasta_karsilama': 'Hasta Karşılama',
+            'muhasebe': 'Muhasebe',
+            'it_destek': 'IT Destek',
+            'laboratuvar': 'Laboratuvar Teknisyeni',
+            'rontgen': 'Röntgen Teknisyeni',
+            'diger': 'Diğer'
+        };
+        return adlar[pozisyon] || pozisyon;
+    }
+
+    function yeniPersonelModal() {
+        document.getElementById('personelForm').reset();
+        document.getElementById('personelId').value = '';
+        document.getElementById('personelModalTitle').textContent = 'Yeni Personel Ekle';
+        document.getElementById('fotografOnizleme').style.display = 'none';
+        personelModal.show();
+    }
+
+    async function personelKaydet() {
+        const form = document.getElementById('personelForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const personelId = document.getElementById('personelId').value;
+        const isUpdate = !!personelId;
+
+        const data = {
+            tc_kimlik: document.getElementById('tcKimlik').value,
+            ad: document.getElementById('ad').value,
+            soyad: document.getElementById('soyad').value,
+            dogum_tarihi: document.getElementById('dogumTarihi').value,
+            cinsiyet: document.getElementById('cinsiyet').value,
+            telefon: document.getElementById('telefon').value,
+            email: document.getElementById('email').value,
+            adres: document.getElementById('adres').value,
+            
+            hesap_numarasi: document.getElementById('hesapNumarasi').value,
+            sgk_sicil_no: document.getElementById('sgkSicilNo').value,
+            sgk_baslangic_tarihi: document.getElementById('sgkBaslangicTarihi').value,
+            
+            acil_durum_kisi: document.getElementById('acilKisi').value,
+            acil_durum_telefon: document.getElementById('acilTelefon').value,
+            acil_durum_yakinlik: document.getElementById('acilYakinlik').value,
+            sube_id: document.getElementById('subeId').value,
+            departman: document.getElementById('departman').value,
+            pozisyon: document.getElementById('pozisyon').value,
+            ise_baslama_tarihi: document.getElementById('iseBaslamaTarihi').value,
+            tecrube_durumu: document.getElementById('tecrubeDurumu').value,
+            deneme_suresi_gun: parseInt(document.getElementById('denemeSuresi').value) || 0,
+            cari_olustur: document.getElementById('cariOlustur').checked,
+            
+            maas_bilgileri: {
+                brut_maas: parseFloat(document.getElementById('brutMaas').value) || 0,
+                net_maas: parseFloat(document.getElementById('netMaas').value) || 0,
+                yol_yardimi: parseFloat(document.getElementById('yolYardimi').value) || 0,
+                yemek_yardimi: parseFloat(document.getElementById('yemekYardimi').value) || 0,
+                cocuk_yardimi: parseFloat(document.getElementById('cocukYardimi').value) || 0,
+                diger_odenekler: parseFloat(document.getElementById('digerOdenekler').value) || 0,
+                baslangic_tarihi: document.getElementById('maasBaslangicTarihi').value
+            }
+        };
+
+        const fotografInput = document.getElementById('fotografInput');
+        if (fotografInput.files && fotografInput.files[0]) {
+            const file = fotografInput.files[0];
+            const reader = new FileReader();
+            
+            const fotografBase64 = await new Promise((resolve) => {
+                reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+                reader.readAsDataURL(file);
+            });
+            
+            data.fotograf_base64 = fotografBase64;
+        }
+
+        if (isUpdate) {
+            data.id = parseInt(personelId);
+        }
+
+        const url = isUpdate ? '/api/personel/guncelle' : '/api/personel/ekle';
+
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(response => {
+            if (response.success) {
+                showAlert('success', '✓ Başarılı', isUpdate ? 'Personel bilgileri güncellendi!' : 'Personel başarıyla eklendi!');
+                personelModal.hide();
+                personelListele();
+                
+                if (isUpdate && mevcutPersonelId) {
+                    setTimeout(() => personelDetay(mevcutPersonelId), 500);
+                }
+            } else {
+                showAlert('danger', '✗ Hata', response.error);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showAlert('danger', '✗ Sistem Hatası', 'İşlem sırasında beklenmeyen bir hata oluştu.');
+        });
+    }
+
+    function personelDetay(personelId) {
+        mevcutPersonelId = personelId;
+        
+        fetch(`/api/personel/detay/${personelId}`)
+            .then(r => r.json())
+            .then(response => {
+                if (response.success) {
+                    mevcutPersonelData = response.data;
+                    renderPersonelDetay(response.data);
+                    detayModal.show();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showAlert('danger', 'Hata', 'Personel detayı yüklenemedi');
+            });
+    }
+
+    function renderPersonelDetay(detay) {
+        const p = detay.personel;
+        const m = detay.maas || {};
+
+        document.getElementById('detayModalTitle').textContent = `${p.ad} ${p.soyad}`;
+        document.getElementById('detayModalSubtitle').textContent = `Personel ID: ${p.id}`;
+        document.getElementById('detayAdSoyad').textContent = `${p.ad} ${p.soyad}`;
+        document.getElementById('detayTcKimlik').textContent = `TC: ${p.tc_kimlik}`;
+
+        document.getElementById('detayDurumBadges').innerHTML = `
+            <span class="badge ${p.calisma_durumu === 'aktif' ? 'bg-success' : 'bg-secondary'} me-2">
+                ${p.calisma_durumu === 'aktif' ? 'Aktif' : 'Pasif'}
+            </span>
+            <span class="badge ${getBadgeClass(p.pozisyon)}">${getPozisyonAdi(p.pozisyon)}</span>
+        `;
+
+        const fotoContainer = document.getElementById('detayFotoContainer');
+        if (p.fotograf_base64) {
+            fotoContainer.innerHTML = `<img src="data:image/jpeg;base64,${p.fotograf_base64}" class="personel-foto-detay" alt="${p.ad}">`;
+        } else {
+            fotoContainer.innerHTML = `
+                <div class="personel-foto-detay bg-secondary text-white d-flex align-items-center justify-content-center mx-auto">
+                    <i class="fas fa-user fa-3x"></i>
+                </div>`;
+        }
+
+        document.getElementById('genelBilgilerTable').innerHTML = `
+            <tr><th width="45%">Doğum Tarihi:</th><td>${p.dogum_tarihi || '-'}</td></tr>
+            <tr><th>Cinsiyet:</th><td>${p.cinsiyet || '-'}</td></tr>
+            <tr><th>Telefon:</th><td>${p.telefon || '-'}</td></tr>
+            <tr><th>E-posta:</th><td>${p.email || '-'}</td></tr>
+            <tr><th>Adres:</th><td>${p.adres || '-'}</td></tr>
+            <tr><th colspan="2" class="text-center bg-light"><i class="fas fa-bank"></i> Finansal/SGK Bilgileri</th></tr>
+            <tr><th>Hesap No (IBAN):</th><td>${p.hesap_numarasi || '-'}</td></tr>
+            <tr><th>SGK Sicil No:</th><td>${p.sgk_sicil_no || '-'}</td></tr>
+            <tr><th colspan="2" class="text-center bg-light"><i class="fas fa-phone-alt"></i> Acil İletişim</th></tr>
+            <tr><th>Kişi / Yakınlık:</th><td>${p.acil_durum_kisi || '-'} / ${p.acil_durum_yakinlik || '-'}</td></tr>
+            <tr><th>Telefon:</th><td>${p.acil_durum_telefon || '-'}</td></tr>
+        `;
+
+        document.getElementById('isBilgileriTable').innerHTML = `
+            <tr><th width="45%">Şube:</th><td>${detay.sube_adi || p.sube_id}</td></tr>
+            <tr><th>Pozisyon:</th><td>${getPozisyonAdi(p.pozisyon)}</td></tr>
+            <tr><th>Departman:</th><td>${p.departman || '-'}</td></tr>
+            <tr><th>İşe Başlama:</th><td>${p.ise_baslama_tarihi}</td></tr>
+            <tr><th>SGK Başlangıcı:</th><td>${p.sgk_baslangic_tarihi || '-'}</td></tr>
+            <tr><th>Deneme Süresi (Gün):</th><td>${p.deneme_suresi_gun || 0}</td></tr>
+            <tr>
+                <th>Çalışma Durumu:</th>
+                <td>
+                    <button class="btn btn-sm ${p.calisma_durumu === 'aktif' ? 'btn-warning' : 'btn-success'}" 
+                            onclick="durumDegistir(${p.id}, '${p.calisma_durumu}')">
+                        <i class="fas fa-exchange-alt"></i> 
+                        ${p.calisma_durumu === 'aktif' ? 'Pasif Yap' : 'Aktif Yap'}
+                    </button>
+                </td>
+            </tr>
+            <tr><th colspan="2" class="text-center bg-primary text-white">Maaş Detayları (${m.baslangic_tarihi || 'Tarih Yok'})</th></tr>
+            <tr><th>Brüt / Net Maaş:</th><td>${(m.brut_maas || 0).toFixed(2)} TL / ${(m.net_maas || 0).toFixed(2)} TL</td></tr>
+            <tr><th>Yol / Yemek Yardımı:</th><td>${(m.yol_yardimi || 0).toFixed(2)} TL / ${(m.yemek_yardimi || 0).toFixed(2)} TL</td></tr>
+            <tr><th>Çocuk / Diğer Ödenek:</th><td>${(m.cocuk_yardimi || 0).toFixed(2)} TL / ${(m.diger_odenekler || 0).toFixed(2)} TL</td></tr>
+        `;
+
+        izinleriYukle(p.id);
+        maasGecmisiYukle(p.id);
+    }
+
+    function durumDegistir(personelId, mevcutDurum) {
+        const yeniDurum = mevcutDurum === 'aktif' ? 'pasif' : 'aktif';
+        const mesaj = yeniDurum === 'pasif' ? 
+            'Personeli pasif yapmak istediğinizden emin misiniz?' : 
+            'Personeli aktif yapmak istediğinizden emin misiniz?';
+        
+        if (!confirm(mesaj)) return;
+
+        fetch(`/api/personel/guncelle`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                id: personelId,
+                calisma_durumu: yeniDurum
+            })
+        })
+        .then(r => r.json())
+        .then(response => {
+            if (response.success) {
+                showAlert('success', '✓ Başarılı', `Personel ${yeniDurum} yapıldı`);
+                personelDetay(personelId);
+                personelListele();
+            } else {
+                showAlert('danger', '✗ Hata', response.error);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showAlert('danger', '✗ Hata', 'Durum değiştirilemedi');
+        });
+    }
+
+    function izinleriYukle(personelId) {
+        fetch(`/api/personel/izin/liste/${personelId}`)
+            .then(r => r.json())
+            .then(response => {
+                if (response.success && response.data.length > 0) {
+                    const izinlerHTML = `
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>İzin Tipi</th>
+                                        <th>Başlangıç</th>
+                                        <th>Bitiş</th>
+                                        <th>Gün Sayısı</th>
+                                        <th>Durum</th>
+                                        <th>Açıklama</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${response.data.map(izin => `
+                                        <tr>
+                                            <td><span class="badge bg-primary">${izin.izin_tipi}</span></td>
+                                            <td>${izin.baslangic_tarihi}</td>
+                                            <td>${izin.bitis_tarihi}</td>
+                                            <td>${izin.gun_sayisi} gün</td>
+                                            <td><span class="badge ${izin.onay_durumu === 'onaylandi' ? 'bg-success' : 'bg-warning'}">${izin.onay_durumu}</span></td>
+                                            <td>${izin.aciklama || '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    document.getElementById('izinlerContent').innerHTML = izinlerHTML;
+                } else {
+                    document.getElementById('izinlerContent').innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Henüz izin kaydı bulunmuyor.
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('izinlerContent').innerHTML = `
+                    <div class="alert alert-danger">İzinler yüklenirken hata oluştu</div>
+                `;
+            });
+    }
+
+    function maasGecmisiYukle(personelId) {
+        fetch(`/api/personel/maas/liste?personel_id=${personelId}`)
+            .then(r => r.json())
+            .then(response => {
+                if (response.success && response.data.length > 0) {
+                    const maasHTML = `
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Dönem</th>
+                                        <th>Brüt Maaş</th>
+                                        <th>Net Maaş</th>
+                                        <th>Ödenecek Tutar</th>
+                                        <th>Ödeme Durumu</th>
+                                        <th>Ödeme Tarihi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${response.data.map(maas => `
+                                        <tr>
+                                            <td><strong>${maas.donem_ay}/${maas.donem_yil}</strong></td>
+                                            <td>${maas.brut_maas.toFixed(2)} ₺</td>
+                                            <td>${maas.net_maas.toFixed(2)} ₺</td>
+                                            <td class="fw-bold">${maas.odenecek_tutar.toFixed(2)} ₺</td>
+                                            <td><span class="badge ${maas.odeme_durumu === 'odendi' ? 'bg-success' : 'bg-warning'}">${maas.odeme_durumu}</span></td>
+                                            <td>${maas.odeme_tarihi || '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    document.getElementById('maasGecmisiContent').innerHTML = maasHTML;
+                } else {
+                    document.getElementById('maasGecmisiContent').innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Henüz maaş ödeme kaydı bulunmuyor.
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('maasGecmisiContent').innerHTML = `
+                    <div class="alert alert-danger">Maaş geçmişi yüklenirken hata oluştu</div>
+                `;
+            });
+    }
+
+    function personelDuzenle() {
+        if (!mevcutPersonelData) return;
+        
+        const p = mevcutPersonelData.personel;
+        const m = p.maas_bilgileri || {}; 
+        
+        document.getElementById('personelId').value = p.id;
+        document.getElementById('tcKimlik').value = p.tc_kimlik;
+        document.getElementById('ad').value = p.ad;
+        document.getElementById('soyad').value = p.soyad;
+        document.getElementById('hesapNumarasi').value = p.hesap_numarasi || '';
+        document.getElementById('sgkSicilNo').value = p.sgk_sicil_no || '';
+        document.getElementById('sgkBaslangicTarihi').value = p.sgk_baslangic_tarihi || '';
+        document.getElementById('dogumTarihi').value = p.dogum_tarihi || '';
+        document.getElementById('cinsiyet').value = p.cinsiyet || '';
+        document.getElementById('telefon').value = p.telefon || '';
+        document.getElementById('email').value = p.email || '';
+        document.getElementById('adres').value = p.adres || '';
+        document.getElementById('acilKisi').value = p.acil_durum_kisi || '';
+        document.getElementById('acilTelefon').value = p.acil_durum_telefon || '';
+        document.getElementById('acilYakinlik').value = p.acil_durum_yakinlik || '';
+        document.getElementById('subeId').value = p.sube_id || '';
+        document.getElementById('departman').value = p.departman || '';
+        document.getElementById('pozisyon').value = p.pozisyon || '';
+        document.getElementById('iseBaslamaTarihi').value = p.ise_baslama_tarihi;
+        document.getElementById('tecrubeDurumu').value = p.tecrube_durumu || 'yeni';
+        document.getElementById('denemeSuresi').value = p.deneme_suresi_gun || 0;
+        document.getElementById('brutMaas').value = m.brut_maas || 0;
+        document.getElementById('netMaas').value = m.net_maas || 0;
+        document.getElementById('yolYardimi').value = m.yol_yardimi || 0;
+        document.getElementById('yemekYardimi').value = m.yemek_yardimi || 0;
+        document.getElementById('cocukYardimi').value = m.cocuk_yardimi || 0;
+        document.getElementById('digerOdenekler').value = m.diger_odenekler || 0;
+        document.getElementById('maasBaslangicTarihi').value = m.baslangic_tarihi || '';
+
+        pozisyonDegisti(); 
+        
+        document.getElementById('personelModalTitle').textContent = 'Personel Bilgilerini Düzenle';
+        
+        detayModal.hide();
+        personelModal.show();
+    }
+
+    function deletePersonel(personelId, adSoyad) {
+        document.getElementById('silinecekPersonelId').value = personelId;
+        document.getElementById('silmeOnayMetni').textContent = `${adSoyad} adlı personeli silmek istediğinizden emin misiniz?`;
+        document.getElementById('adminSifreInput').value = '';
+        silmeOnayModal.show();
+    }
+
+    function pozisyonDegisti() {
+        const pozisyon = document.getElementById('pozisyon').value;
+        const isHekim = (pozisyon === 'hekim');
+        
+        const maasFields = document.querySelectorAll('.maas-field');
+        const maasRequired = document.querySelectorAll('.maas-required');
+        
+        maasFields.forEach(field => {
+            if (isHekim) {
+                field.removeAttribute('required');
+                field.disabled = true;
+                field.value = '0';
+            } else {
+                if (field.id === 'brutMaas' || field.id === 'netMaas' || field.id === 'maasBaslangicTarihi') {
+                    field.setAttribute('required', 'required');
+                }
+                field.disabled = false;
+            }
+        });
+        
+        maasRequired.forEach(span => {
+            span.style.display = isHekim ? 'none' : 'inline';
+        });
+    }
+
+    function personelSilOnayli() {
+        const personelId = document.getElementById('silinecekPersonelId').value;
+        const adminSifreInput = document.getElementById('adminSifreInput');
+        
+        if (!adminSifreInput) {
+            showAlert('danger', 'Hata', 'Admin Şifre alanı bulunamadı.');
+            return;
+        }
+        
+        const adminSifre = adminSifreInput.value.trim();
+
+        if (!adminSifre) {
+            showAlert('warning', 'Uyarı', 'Lütfen silme işlemini onaylamak için admin şifresini girin.');
+            return;
+        }
+
+        const silButton = event.target;
+        silButton.disabled = true;
+        silButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Siliniyor...';
+
+        fetch(`/api/personel/sil/${personelId}`, { 
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({admin_sifre: adminSifre}) 
+        })
+        .then(r => {
+            if (!r.ok) {
+                return r.json().then(data => {
+                    throw new Error(data.error || `Sunucu Hatası: ${r.statusText}`);
+                }).catch((err) => {
+                    if (r.status === 404) {
+                        throw new Error("API Rotası Bulunamadı (404). Backend'i kontrol edin.");
+                    }
+                    throw err;
+                });
+            }
+            return r.json();
+        })
+        .then(response => {
+            if (response.success) {
+                showAlert('success', '✓ Başarılı', response.message);
+                silmeOnayModal.hide();
+                adminSifreInput.value = '';
+                personelListele();
+                
+                if (mevcutPersonelId == personelId) {
+                    detayModal.hide();
+                    mevcutPersonelId = null;
+                    mevcutPersonelData = null;
+                }
+            } else {
+                showAlert('danger', '✗ Hata', response.error || 'Silme işlemi başarısız oldu.');
+            }
+        })
+        .catch(err => {
+            console.error('Personel silme hatası:', err);
+            showAlert('danger', '✗ Sistem Hatası', err.message);
+        })
+        .finally(() => {
+            silButton.disabled = false;
+            silButton.innerHTML = '<i class="fas fa-trash"></i> Evet, Sil';
+        });
+    }
+
+    document.getElementById('fotografInput')?.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        if (file.size > 5 * 1024 * 1024) {
+            showAlert('danger', 'Hata', 'Dosya boyutu 5MB\'dan küçük olmalıdır');
+            this.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            document.getElementById('onizlemeImg').src = event.target.result;
+            document.getElementById('fotografOnizleme').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    });
+
+    function fotografSil() {
+        document.getElementById('fotografInput').value = '';
+        document.getElementById('fotografOnizleme').style.display = 'none';
+	}
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showAlert(type, title, message) {
+        const existingAlerts = document.querySelectorAll('.custom-alert');
+        existingAlerts.forEach(alert => alert.remove());
+        
+        const alertHTML = `
+            <div class="custom-alert alert alert-${type} alert-dismissible fade show position-fixed" 
+                 style="top: 20px; right: 20px; z-index: 9999; min-width: 350px; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <h6 class="alert-heading mb-2">${title}</h6>
+                <p class="mb-0" style="white-space: pre-line;">${message}</p>
+                <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', alertHTML);
+        
+        setTimeout(() => {
+            const alert = document.querySelector('.custom-alert');
+            if (alert) alert.remove();
+        }, 6000);
+    }
+</script>	

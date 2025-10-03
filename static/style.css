@@ -1,0 +1,405 @@
+/* Genel Sayfa Ayarları */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #e9ecef;
+    color: #495057;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+/* Konteyner ve Kart Kutusu Stilleri */
+.container {
+    max-width: 90%;
+    padding: 20px;
+}
+
+.card {
+    background-color: #ffffff;
+    padding: 30px 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Logo için özel stil */
+.logo-image {
+    max-width: 150px;
+    max-height: 100px;
+    height: auto;
+}
+
+/* Başlık ve Paragraf Stilleri */
+h1 {
+    color: #007bff;
+    font-size: 2em;
+    margin-bottom: 10px;
+}
+
+p {
+    margin-bottom: 30px;
+    color: #6c757d;
+}
+
+/* Form ve Elemanları */
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-label {
+    font-weight: bold;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.25);
+    outline: none;
+}
+
+input[type="file"] {
+    padding: 3px;
+    font-size: 16px;
+}
+
+/* Buton Stilleri */
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+    font-size: 1.1em;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    margin-top: 20px;
+    padding: 12px 24px;
+    border-radius: 6px;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+}
+
+.btn-primary:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+    transition: all 0.3s ease;
+}
+
+.btn-success:hover:not(:disabled) {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.btn-success:disabled {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+.btn-outline-primary {
+    color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-outline-primary:hover {
+    color: #fff;
+    background-color: #007bff;
+}
+
+/* Yükleme Animasyonu (Spinner) */
+.fa-spinner {
+    margin-right: 5px;
+}
+
+/* Hata Mesajı Stili */
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 20px;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 20px;
+}
+
+/* Sonuç ve Tablo Stilleri */
+.results-container {
+    margin-top: 30px;
+    text-align: left;
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 15px;
+    background-color: #ffffff;
+}
+
+.results-container h2 {
+    color: #007bff;
+    margin-bottom: 15px;
+    font-size: 1.5em;
+    text-align: center;
+}
+
+.table-responsive {
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+table th,
+table td {
+    padding: 10px;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Başlık ve hücre stilleri */
+table thead th {
+    background-color: #007bff;
+    color: white;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    text-align: center;
+}
+
+table tbody tr {
+    transition: background-color 0.3s ease;
+}
+
+table tbody tr:hover {
+    background-color: #e2e6ea;
+}
+
+table tbody td {
+    vertical-align: middle;
+}
+
+/* Farklı DOSYA NO grupları için renkler */
+.renk-grup-0 {
+    background-color: #e9f5ff; /* Açık mavi */
+}
+
+.renk-grup-1 {
+    background-color: #f8f9fa; /* Çok açık gri */
+}
+
+/* Responsive tasarım */
+@media (max-width: 768px) {
+    .container {
+        max-width: 95%;
+        padding: 10px;
+    }
+    
+    .card {
+        padding: 20px;
+    }
+    
+    h1 {
+        font-size: 1.5em;
+    }
+    
+    .results-container {
+        max-height: 300px;
+        padding: 10px;
+    }
+    
+    table th,
+    table td {
+        padding: 8px 6px;
+        font-size: 0.8em;
+    }
+}
+
+/* Scroll bar stil düzeltmeleri */
+.results-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.results-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.results-container::-webkit-scrollbar-thumb {
+    background: #007bff;
+    border-radius: 4px;
+}
+
+.results-container::-webkit-scrollbar-thumb:hover {
+    background: #0056b3;
+}
+
+/* Loading durumu için ekstra stiller */
+.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* Animasyon geliştirmeleri */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.results-container {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Buton grupları için stil */
+.text-center .btn {
+    margin: 5px;
+}
+
+/* Randevu Takvimi için özel stiller */
+#calendar {
+    max-width: 1000px;
+    margin: 20px auto;
+    background: #ffffff;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+/* FullCalendar başlık stil */
+.fc-toolbar-title {
+    font-size: 1.4em !important;
+    color: #007bff;
+    font-weight: 600;
+}
+
+/* Takvimde slot (saat) görünümü */
+.fc-timegrid-slot {
+    height: 40px;
+}
+
+/* Event (randevu kutusu) görünümü */
+.fc-event {
+    font-size: 0.9em;
+    border-radius: 6px;
+    padding: 2px 4px;
+    border: none;
+    cursor: pointer;
+}
+
+/* Event üzerine gelindiğinde */
+.fc-event:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+    transition: all 0.2s ease;
+}
+
+/* Bugünün arka planı */
+.fc-day-today {
+    background-color: #e9f5ff !important;
+}
+/* Prim listesi için ek CSS */
+.avatar-circle {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.prim-amount {
+    color: #28a745 !important;
+    font-weight: bold;
+}
+
+.table-hover tbody tr:hover .prim-amount {
+    color: #20c997 !important;
+}
+
+.filter-card {
+    border-left: 4px solid #007bff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.prim-detail-row {
+    background-color: #f8f9fa;
+    border-left: 3px solid #17a2b8;
+}
+
+.toast-container {
+    z-index: 9999;
+}
+
+@media (max-width: 768px) {
+    .btn-group-vertical .btn {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+    
+    .table-responsive {
+        font-size: 12px;
+    }
+    
+    .avatar-circle {
+        width: 25px;
+        height: 25px;
+        font-size: 10px;
+    }
+}
+
+/* Yazdırma stilleri */
+@media print {
+    .no-print, .btn, .pagination, .toast-container {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #dee2e6 !important;
+        box-shadow: none !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .table {
+        font-size: 11px;
+    }
+    
+    .prim-amount {
+        color: #000 !important;
+    }
+}
