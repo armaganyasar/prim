@@ -27,6 +27,14 @@
             border-radius: 5px;
             margin-bottom: 10px;
         }
+        .izin-info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 8px 12px;
+            margin-top: 8px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -40,6 +48,9 @@
                         <p class="text-muted mb-0">Maaş hesaplama ve ödeme işlemleri</p>
                     </div>
                     <div>
+                        <a href="/izin_yonetimi" class="btn btn-outline-info me-2">
+                            <i class="fas fa-calendar-check"></i> İzin Yönetimi
+                        </a>
                         <a href="/personel" class="btn btn-outline-secondary me-2">
                             <i class="fas fa-users"></i> Personel Listesi
                         </a>
@@ -51,57 +62,53 @@
             </div>
         </div>
 
-<div class="row g-3">
-    <div class="col-md-2">
-        <label class="form-label">Dönem Yıl</label>
-        <select class="form-select" id="filterYil"></select>
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">Dönem Ay</label>
-        <select class="form-select" id="filterAy">
-            <option value="1">Ocak</option>
-            <option value="2">Şubat</option>
-            <option value="3">Mart</option>
-            <option value="4">Nisan</option>
-            <option value="5">Mayıs</option>
-            <option value="6">Haziran</option>
-            <option value="7">Temmuz</option>
-            <option value="8">Ağustos</option>
-            <option value="9">Eylül</option>
-            <option value="10">Ekim</option>
-            <option value="11">Kasım</option>
-            <option value="12">Aralık</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">Cari Türü</label>
-        <select class="form-select" id="filterCariTuru">
-            <option value="">Tümü</option>
-            <!-- JS ile doldurulacak -->
-        </select>
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">Alt Türü</label>
-        <select class="form-select" id="filterAltTuru">
-            <option value="">Tümü</option>
-            <!-- JS ile doldurulacak -->
-        </select>
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">Personel</label>
-        <select class="form-select" id="filterPersonel">
-            <option value="">Tüm Personel</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">&nbsp;</label>
-        <button class="btn btn-primary w-100" onclick="maasListele()">
-            <i class="fas fa-search"></i> Listele
-        </button>
-    </div>
-</div>
-
-
+        <div class="row g-3 mb-4">
+            <div class="col-md-2">
+                <label class="form-label">Dönem Yıl</label>
+                <select class="form-select" id="filterYil"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Dönem Ay</label>
+                <select class="form-select" id="filterAy">
+                    <option value="1">Ocak</option>
+                    <option value="2">Şubat</option>
+                    <option value="3">Mart</option>
+                    <option value="4">Nisan</option>
+                    <option value="5">Mayıs</option>
+                    <option value="6">Haziran</option>
+                    <option value="7">Temmuz</option>
+                    <option value="8">Ağustos</option>
+                    <option value="9">Eylül</option>
+                    <option value="10">Ekim</option>
+                    <option value="11">Kasım</option>
+                    <option value="12">Aralık</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Cari Türü</label>
+                <select class="form-select" id="filterCariTuru">
+                    <option value="">Tümü</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Alt Türü</label>
+                <select class="form-select" id="filterAltTuru">
+                    <option value="">Tümü</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Personel</label>
+                <select class="form-select" id="filterPersonel">
+                    <option value="">Tüm Personel</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-primary w-100" onclick="maasListele()">
+                    <i class="fas fa-search"></i> Listele
+                </button>
+            </div>
+        </div>
 
         <!-- Maaş Listesi -->
         <div class="row">
@@ -154,15 +161,18 @@
                                         </select>
                                     </div>
                                     <div class="col-6">
-                                        <select class="form-select" id="hesaplaYil" required>
-                                            <!-- JS ile doldurulacak -->
-                                        </select>
+                                        <select class="form-select" id="hesaplaYil" required></select>
                                     </div>
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Ücretsiz İzin (Gün)</label>
-                                <input type="number" class="form-control" id="ucretsizIzin" value="0" min="0" max="30">
+                                <label class="form-label">
+                                    Ücretsiz İzin (Gün) 
+                                    <i class="fas fa-info-circle text-info" 
+                                       title="Otomatik izin kayıtlarından çekilir"></i>
+                                </label>
+                                <input type="number" class="form-control" id="ucretsizIzin" value="0" min="0" max="30" step="0.5">
+                                <div id="izinBilgiContainer"></div>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Fazla Mesai (Saat)</label>
@@ -249,6 +259,64 @@
             document.getElementById('hesaplaAy').value = currentMonth;
 
             loadPersonelList();
+            
+            // YENİ: Personel seçildiğinde otomatik izin çek
+            document.getElementById('hesaplaPersonel').addEventListener('change', otomatikIzinCek);
+            document.getElementById('hesaplaAy').addEventListener('change', function() {
+                if (document.getElementById('hesaplaPersonel').value) {
+                    otomatikIzinCek();
+                }
+            });
+            document.getElementById('hesaplaYil').addEventListener('change', function() {
+                if (document.getElementById('hesaplaPersonel').value) {
+                    otomatikIzinCek();
+                }
+            });
+        }
+
+        async function otomatikIzinCek() {
+            const personelId = document.getElementById('hesaplaPersonel').value;
+            if (!personelId) return;
+
+            const donemAy = parseInt(document.getElementById('hesaplaAy').value);
+            const donemYil = parseInt(document.getElementById('hesaplaYil').value);
+
+            try {
+                const response = await fetch('/api/izin/aylik_kesinti', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        personel_id: parseInt(personelId),
+                        donem_ay: donemAy,
+                        donem_yil: donemYil
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('ucretsizIzin').value = data.kesintili_gun;
+                    
+                    const container = document.getElementById('izinBilgiContainer');
+                    if (data.kesintili_gun > 0) {
+                        container.innerHTML = `
+                            <div class="izin-info mt-2">
+                                <i class="fas fa-calendar-times"></i> 
+                                Bu ay <strong>${data.kesintili_gun} gün</strong> kesintili izin tespit edildi.
+                                <br><small>Düzenleyebilirsiniz.</small>
+                            </div>
+                        `;
+                    } else {
+                        container.innerHTML = `
+                            <small class="text-muted d-block mt-1">
+                                <i class="fas fa-check-circle text-success"></i> Bu ay kesintili izin yok
+                            </small>
+                        `;
+                    }
+                }
+            } catch (err) {
+                console.warn('İzin otomatik çekilemedi:', err);
+            }
         }
 
         function loadPersonelList() {
@@ -316,118 +384,96 @@
                 });
         }
 
-       function renderMaasListesi(maaslar) {
-    const container = document.getElementById('maasListesi');
-    
-    // Debug
-    console.log('Gelen maaş verileri:', maaslar);
-    
-    if (!maaslar || maaslar.length === 0) {
-        container.innerHTML = '<p class="text-center text-muted py-4">Bu döneme ait maaş ödemesi bulunamadı</p>';
-        return;
-    }
+        function renderMaasListesi(maaslar) {
+            const container = document.getElementById('maasListesi');
+            
+            if (!maaslar || maaslar.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted py-4">Bu döneme ait maaş ödemesi bulunamadı</p>';
+                return;
+            }
 
-    // Toplamları hesapla
-    let toplamOdenecek = 0;
-    let toplamOdendi = 0;
+            let toplamOdenecek = 0;
+            let toplamOdendi = 0;
 
-    maaslar.forEach(m => {
-        const tutar = parseFloat(m.odenecek_tutar) || 0;
-        toplamOdenecek += tutar;
-        
-        if (m.odeme_durumu === 'odendi') {
-            toplamOdendi += tutar;
+            maaslar.forEach(m => {
+                const tutar = parseFloat(m.odenecek_tutar) || 0;
+                toplamOdenecek += tutar;
+                if (m.odeme_durumu === 'odendi') {
+                    toplamOdendi += tutar;
+                }
+            });
+
+            const toplamHTML = `
+                <div class="alert alert-info d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <i class="fas fa-arrow-down text-danger"></i> 
+                        <strong>Toplam Ödenecek (Borç):</strong> 
+                        <span class="fs-5 text-danger">${formatCurrency(toplamOdenecek)}</span>
+                    </div>
+                    <div>
+                        <i class="fas fa-check-circle text-success"></i> 
+                        <strong>Toplam Ödenmiş:</strong> 
+                        <span class="fs-5 text-success">${formatCurrency(toplamOdendi)}</span>
+                    </div>
+                    <div>
+                        <i class="fas fa-clock text-warning"></i> 
+                        <strong>Bekleyen:</strong> 
+                        <span class="fs-5 text-warning">${formatCurrency(toplamOdenecek - toplamOdendi)}</span>
+                    </div>
+                </div>
+            `;
+
+            let html = '<div class="table-responsive"><table class="table table-hover table-striped">';
+            html += '<thead class="table-dark"><tr>';
+            html += '<th>Personel</th><th>Dönem</th><th>Cari Türü</th><th>Alt Türü</th><th class="text-end">Net Maaş</th>';
+            html += '<th class="text-end">Ödenecek</th><th class="text-center">Durum</th><th class="text-center">İşlemler</th>';
+            html += '</tr></thead><tbody>';
+
+            maaslar.forEach(m => {
+                const durum = m.odeme_durumu || 'beklemede';
+                const durumClass = durum === 'odendi' ? 'success' : 'warning';
+                const durumIcon = durum === 'odendi' ? 'check-circle' : 'clock';
+                const durumText = durum === 'odendi' ? 'Ödendi' : 'Bekliyor';
+
+                html += '<tr>';
+                html += `<td><strong>${m.ad} ${m.soyad}</strong></td>`;
+                html += `<td>${getAyAdi(m.donem_ay)} ${m.donem_yil}</td>`;
+                html += `<td><span class="badge bg-secondary">${m.cari_turu || '-'}</span></td>`;
+                html += `<td><span class="badge bg-light text-dark">${m.alt_turu || '-'}</span></td>`;
+                html += `<td class="text-end">${formatCurrency(m.net_maas)}</td>`;
+                html += `<td class="text-end"><strong class="text-primary">${formatCurrency(m.odenecek_tutar)}</strong></td>`;
+                html += `<td class="text-center">
+                            <span class="badge bg-${durumClass}">
+                                <i class="fas fa-${durumIcon}"></i> ${durumText}
+                            </span>
+                         </td>`;
+                html += '<td class="text-center">';
+                html += `<button class="btn btn-sm btn-outline-info me-1" 
+                            onclick='maasDetay(${JSON.stringify(m).replace(/'/g, "&#39;")})' 
+                            title="Detay">
+                            <i class="fas fa-info-circle"></i>
+                         </button>`;
+                
+                if (durum === 'beklemede' && m.cari_id) {
+                    html += `<a href="/cari_yonetimi" 
+                                class="btn btn-sm btn-success me-1" 
+                                title="Ödeme Yap">
+                                <i class="fas fa-credit-card"></i>
+                             </a>`;
+                }
+                
+                html += `<button class="btn btn-sm btn-danger" 
+                            onclick="maasSil(${m.id}, '${m.ad} ${m.soyad}', '${getAyAdi(m.donem_ay)} ${m.donem_yil}')"
+                            title="Sil">
+                            <i class="fas fa-trash"></i>
+                         </button>`;
+                html += '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = toplamHTML + html;
         }
-    });
-
-    console.log('Hesaplanan toplamlar:', {
-        toplamOdenecek,
-        toplamOdendi,
-        bekleyen: toplamOdenecek - toplamOdendi
-    });
-
-    // Toplam kutusu
-    const toplamHTML = `
-        <div class="alert alert-info d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <i class="fas fa-arrow-down text-danger"></i> 
-                <strong>Toplam Ödenecek (Borç):</strong> 
-                <span class="fs-5 text-danger">${formatCurrency(toplamOdenecek)}</span>
-            </div>
-            <div>
-                <i class="fas fa-check-circle text-success"></i> 
-                <strong>Toplam Ödenmiş:</strong> 
-                <span class="fs-5 text-success">${formatCurrency(toplamOdendi)}</span>
-            </div>
-            <div>
-                <i class="fas fa-clock text-warning"></i> 
-                <strong>Bekleyen:</strong> 
-                <span class="fs-5 text-warning">${formatCurrency(toplamOdenecek - toplamOdendi)}</span>
-            </div>
-        </div>
-    `;
-
-    // Tablo
-    let html = '<div class="table-responsive"><table class="table table-hover table-striped">';
-    html += '<thead class="table-dark"><tr>';
-    html += '<th>Personel</th>';
-    html += '<th>Dönem</th>';
-    html += '<th>Cari Türü</th>';
-    html += '<th>Alt Türü</th>';
-    html += '<th class="text-end">Net Maaş</th>';
-    html += '<th class="text-end">Ödenecek</th>';
-    html += '<th class="text-center">Durum</th>';
-    html += '<th class="text-center">İşlemler</th>';
-    html += '</tr></thead><tbody>';
-
-    maaslar.forEach(m => {
-        const durum = m.odeme_durumu || 'beklemede';
-        const durumClass = durum === 'odendi' ? 'success' : 'warning';
-        const durumIcon = durum === 'odendi' ? 'check-circle' : 'clock';
-        const durumText = durum === 'odendi' ? 'Ödendi' : 'Bekliyor';
-
-        html += '<tr>';
-        html += `<td><strong>${m.ad} ${m.soyad}</strong></td>`;
-        html += `<td>${getAyAdi(m.donem_ay)} ${m.donem_yil}</td>`;
-        html += `<td><span class="badge bg-secondary">${m.cari_turu || '-'}</span></td>`;
-        html += `<td><span class="badge bg-light text-dark">${m.alt_turu || '-'}</span></td>`;
-        html += `<td class="text-end">${formatCurrency(m.net_maas)}</td>`;
-        html += `<td class="text-end"><strong class="text-primary">${formatCurrency(m.odenecek_tutar)}</strong></td>`;
-        html += `<td class="text-center">
-                    <span class="badge bg-${durumClass}">
-                        <i class="fas fa-${durumIcon}"></i> ${durumText}
-                    </span>
-                 </td>`;
-        html += '<td class="text-center">';
-        html += `<button class="btn btn-sm btn-outline-info me-1" 
-                    onclick='maasDetay(${JSON.stringify(m).replace(/'/g, "&#39;")})' 
-                    title="Detay">
-                    <i class="fas fa-info-circle"></i>
-                 </button>`;
-        
-        if (durum === 'beklemede' && m.cari_id) {
-            html += `<a href="/cari_yonetimi" 
-                        class="btn btn-sm btn-success me-1" 
-                        title="Ödeme Yap">
-                        <i class="fas fa-credit-card"></i>
-                     </a>`;
-        }
-        
-        html += `<button class="btn btn-sm btn-danger" 
-                    onclick="maasSil(${m.id}, '${m.ad} ${m.soyad}', '${getAyAdi(m.donem_ay)} ${m.donem_yil}')"
-                    title="Sil">
-                    <i class="fas fa-trash"></i>
-                 </button>`;
-        html += '</td>';
-        html += '</tr>';
-    });
-
-    html += '</tbody></table></div>';
-
-    // Toplamlar + Tablo
-    container.innerHTML = toplamHTML + html;
-}
-
 
         function maasSil(maasId, personelAdi, donem) {
             if (!confirm(`${personelAdi} personelinin ${donem} dönemi maaş kaydını silmek istediğinizden emin misiniz?\n\nBu işlem:\n- Maaş kaydını\n- İlişkili cari hareketi\nkalıcı olarak silecektir.`)) {
@@ -470,7 +516,7 @@
             });
         }
 
-        function maasHesapla() {
+        async function maasHesapla() {
             const personelId = document.getElementById('hesaplaPersonel').value;
             
             if (!personelId) {
@@ -478,11 +524,17 @@
                 return;
             }
 
+            const donemAy = parseInt(document.getElementById('hesaplaAy').value);
+            const donemYil = parseInt(document.getElementById('hesaplaYil').value);
+
+            // Otomatik izin güncelle (kullanıcı değiştirmiş olabilir)
+            await otomatikIzinCek();
+
             const data = {
                 personel_id: parseInt(personelId),
-                donem_ay: parseInt(document.getElementById('hesaplaAy').value),
-                donem_yil: parseInt(document.getElementById('hesaplaYil').value),
-                ucretsiz_izin_gun: parseInt(document.getElementById('ucretsizIzin').value) || 0,
+                donem_ay: donemAy,
+                donem_yil: donemYil,
+                ucretsiz_izin_gun: parseFloat(document.getElementById('ucretsizIzin').value) || 0,
                 fazla_mesai_saat: parseFloat(document.getElementById('fazlaMesai').value) || 0,
                 prim: parseFloat(document.getElementById('prim').value) || 0,
                 bonus: parseFloat(document.getElementById('bonus').value) || 0
@@ -557,6 +609,7 @@
                     showAlert('success', 'Başarılı', 'Maaş hesaplaması kaydedildi ve cari hesaba alacak olarak işlendi');
                     document.getElementById('maasHesaplaForm').reset();
                     document.getElementById('hesaplamaSonuc').style.display = 'none';
+                    document.getElementById('izinBilgiContainer').innerHTML = '';
                     mevcutHesaplama = null;
                     maasListele();
                 } else {

@@ -235,6 +235,18 @@
 							</select>
 						</div>
 					</div>
+					<div class="row mb-3">
+    <div class="col-md-6">
+        <label class="form-label">Yıllık İzin Hakkı (Gün) <span class="text-danger">*</span></label>
+        <input type="number" class="form-control" id="yillikIzinHak" value="14" min="0" max="30" required>
+        <small class="text-muted">Personelin yıllık kullanabileceği izin gün sayısı</small>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Önceki Yıldan Devir (Gün)</label>
+        <input type="number" class="form-control" id="yillikIzinDevir" value="0" min="0" max="60">
+        <small class="text-muted">Kullanılmayan izinler (opsiyonel)</small>
+    </div>
+</div>
 					<div class="row mb-2">
 						<div class="col-md-12">
 							<div class="alert alert-info py-2 mb-0">
@@ -626,7 +638,9 @@
             tecrube_durumu: document.getElementById('tecrubeDurumu').value,
             deneme_suresi_gun: parseInt(document.getElementById('denemeSuresi').value) || 0,
             cari_olustur: document.getElementById('cariOlustur').checked,
-            
+            yillik_izin_hak_edis: parseInt(document.getElementById('yillikIzinHak').value) || 14,
+			yillik_izin_devir: parseInt(document.getElementById('yillikIzinDevir').value) || 0,
+			
             maas_bilgileri: {
                 brut_maas: parseFloat(document.getElementById('brutMaas').value) || 0,
                 net_maas: parseFloat(document.getElementById('netMaas').value) || 0,
@@ -933,6 +947,9 @@
         document.getElementById('cocukYardimi').value = m.cocuk_yardimi || 0;
         document.getElementById('digerOdenekler').value = m.diger_odenekler || 0;
         document.getElementById('maasBaslangicTarihi').value = m.baslangic_tarihi || '';
+		document.getElementById('yillikIzinHak').value = p.yillik_izin_hak_edis || 14;
+			document.getElementById('yillikIzinDevir').value = p.yillik_izin_devir || 0;
+			</script>
 
         pozisyonDegisti(); 
         

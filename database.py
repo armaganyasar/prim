@@ -1177,7 +1177,8 @@ class PersonelDatabase:
         self.db_path = db_path
         self.init_personel_tables()
         self.upgrade_cari_table()
-        self.upgrade_personel_tables() 
+        self.upgrade_personel_tables()
+        self.upgrade_personel_tables_izin()        
     def maas_sil(self, maas_id):
         """Maaş kaydını ve ilişkili cari hareketini sil"""
         conn = None
@@ -1243,7 +1244,399 @@ class PersonelDatabase:
             return False, f"Maaş silinirken hata oluştu: {str(e)}"
         finally:
             if conn:
-                conn.close()    
+                conn.close()  
+
+
+    def upgrade_personel_tables_izin(self):
+        """Personel tablosuna izin takip alanları ekle"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Personel tablosuna yıllık izin alanları ekle
+            cursor.execute("PRAGMA table_info(personel)")
+            existing_cols = {col[1] for col in cursor.fetchall()}
+            
+            new_columns = {
+                'yillik_izin_hak_edis': "ALTER TABLE personel ADD COLUMN yillik_izin_hak_edis INTEGER DEFAULT 14",
+                'yillik_izin_devir': "ALTER TABLE personel ADD COLUMN yillik_izin_devir INTEGER DEFAULT 0",
+                'yillik_izin_donemi': "ALTER TABLE personel ADD COLUMN yillik_izin_donemi INTEGER"
+            }
+            
+            for col_name, query in new_columns.items():
+                if col_name not in existing_cols:
+                    cursor.execute(query)
+                    logger.info(f"Personel tablosuna {col_name} eklendi")
+            
+            # personel_izin tablosuna yeni alanlar ekle
+            cursor.execute("PRAGMA table_info(personel_izin)")
+            existing_izin_cols = {col[1] for col in cursor.fetchall()}
+            
+            izin_columns = {
+                'ucretli_mi': "ALTER TABLE personel_izin ADD COLUMN ucretli_mi BOOLEAN DEFAULT 1",
+                'yillik_izin_kullanimi': "ALTER TABLE personel_izin ADD COLUMN yillik_izin_kullanimi BOOLEAN DEFAULT 0"
+            }
+            
+            for col_name, query in izin_columns.items():
+                if col_name not in existing_izin_cols:
+                    cursor.execute(query)
+                    logger.info(f"personel_izin tablosuna {col_name} eklendi")
+            
+            conn.commit()
+            conn.close()
+            logger.info("İzin sistemi alanları başarıyla eklendi")
+            
+        except Exception as e:
+            logger.warning(f"İzin alanları güncellenemedi: {e}")
+    def upgrade_maas_odeme_table(self):
+        """maas_odeme tablosuna yardım alanlarını ekle"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # maas_odeme tablosu kolonlarını kontrol et
+            cursor.execute("PRAGMA table_info(maas_odeme)")
+            existing_cols = {col[1] for col in cursor.fetchall()}
+            
+            new_columns = {
+                'yol_yardimi': "ALTER TABLE maas_odeme ADD COLUMN yol_yardimi REAL DEFAULT 0",
+                'yemek_yardimi': "ALTER TABLE maas_odeme ADD COLUMN yemek_yardimi REAL DEFAULT 0",
+                'cocuk_yardimi': "ALTER TABLE maas_odeme ADD COLUMN cocuk_yardimi REAL DEFAULT 0",
+                'diger_odenekler': "ALTER TABLE maas_odeme ADD COLUMN diger_odenekler REAL DEFAULT 0"
+            }
+            
+            for col_name, query in new_columns.items():
+                if col_name not in existing_cols:
+                    cursor.execute(query)
+                    logger.info(f"maas_odeme tablosuna {col_name} eklendi")
+            
+            conn.commit()
+            conn.close()
+            logger.info("Maaş yardım alanları başarıyla eklendi")
+            
+        except Exception as e:
+            logger.warning(f"Maaş yardım alanları güncellenemedi: {e}")
+        
+
+    # ==================== İZİN YÖNETİMİ ====================
+    
+    def izin_ekle(self, izin_data):
+        """Yeni izin kaydı ekle - Yıllık izin kotası kontrolü ile"""
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            personel_id = izin_data['personel_id']
+            gun_sayisi = float(izin_data['gun_sayisi'])
+            yillik_izin_kullanimi = izin_data.get('yillik_izin_kullanimi', False)
+            
+            # Yıllık izin kullanımı kontrolü
+            if yillik_izin_kullanimi:
+                cursor.execute("""
+                    SELECT yillik_izin_hak_edis, yillik_izin_devir 
+                    FROM personel 
+                    WHERE id = ?
+                """, (personel_id,))
+                
+                result = cursor.fetchone()
+                if not result:
+                    return False, "Personel bulunamadı"
+                
+                hak_edis = result[0] or 14
+                devir = result[1] or 0
+                toplam_hak = hak_edis + devir
+                
+                # Kullanılan yıllık izinleri hesapla
+                cursor.execute("""
+                    SELECT COALESCE(SUM(gun_sayisi), 0)
+                    FROM personel_izin
+                    WHERE personel_id = ? 
+                    AND yillik_izin_kullanimi = 1
+                    AND onay_durumu != 'reddedildi'
+                """, (personel_id,))
+                
+                kullanilan = cursor.fetchone()[0] or 0
+                kalan = toplam_hak - kullanilan
+                
+                if gun_sayisi > kalan:
+                    return False, f"Yetersiz yıllık izin hakkı! Kalan: {kalan} gün, Talep: {gun_sayisi} gün"
+            
+            # İzin kaydını ekle
+            cursor.execute('''
+                INSERT INTO personel_izin
+                (personel_id, izin_tipi, baslangic_tarihi, bitis_tarihi, gun_sayisi, 
+                 aciklama, onay_durumu, ucretli_mi, yillik_izin_kullanimi)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                personel_id,
+                izin_data['izin_tipi'],
+                izin_data['baslangic_tarihi'],
+                izin_data['bitis_tarihi'],
+                gun_sayisi,
+                izin_data.get('aciklama', ''),
+                'onaylandi',  # Otomatik onay
+                izin_data.get('ucretli_mi', True),
+                yillik_izin_kullanimi
+            ))
+            
+            izin_id = cursor.lastrowid
+            conn.commit()
+            
+            logger.info(f"İzin kaydı eklendi: ID {izin_id}, Personel: {personel_id}")
+            return True, izin_id
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"İzin ekleme hatası: {e}")
+            return False, str(e)
+        finally:
+            if conn:
+                conn.close()
+    
+    def izin_listele(self, personel_id=None, baslangic=None, bitis=None, izin_tipi=None):
+        """İzinleri listele"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            query = """
+                SELECT 
+                    i.*,
+                    p.ad,
+                    p.soyad,
+                    p.tc_kimlik
+                FROM personel_izin i
+                JOIN personel p ON i.personel_id = p.id
+                WHERE 1=1
+            """
+            params = []
+            
+            if personel_id:
+                query += " AND i.personel_id = ?"
+                params.append(personel_id)
+            
+            if baslangic:
+                query += " AND i.baslangic_tarihi >= ?"
+                params.append(baslangic)
+            
+            if bitis:
+                query += " AND i.bitis_tarihi <= ?"
+                params.append(bitis)
+            
+            if izin_tipi:
+                query += " AND i.izin_tipi = ?"
+                params.append(izin_tipi)
+            
+            query += " ORDER BY i.baslangic_tarihi DESC"
+            
+            cursor.execute(query, params)
+            results = cursor.fetchall()
+            conn.close()
+            
+            return [dict(row) for row in results]
+            
+        except Exception as e:
+            logger.error(f"İzin listeleme hatası: {e}")
+            return []
+    
+    def izin_sil(self, izin_id):
+        """İzin kaydını sil"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute("DELETE FROM personel_izin WHERE id = ?", (izin_id,))
+            
+            conn.commit()
+            conn.close()
+            
+            logger.info(f"İzin kaydı silindi: ID {izin_id}")
+            return True, "İzin başarıyla silindi"
+            
+        except Exception as e:
+            logger.error(f"İzin silme hatası: {e}")
+            return False, str(e)
+    
+    def yillik_izin_durumu(self, personel_id):
+        """Personelin yıllık izin durumunu getir"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            # Personel bilgileri
+            cursor.execute("""
+                SELECT 
+                    yillik_izin_hak_edis,
+                    yillik_izin_devir,
+                    yillik_izin_donemi,
+                    ise_baslama_tarihi
+                FROM personel
+                WHERE id = ?
+            """, (personel_id,))
+            
+            personel = cursor.fetchone()
+            if not personel:
+                return None
+            
+            hak_edis = personel['yillik_izin_hak_edis'] or 14
+            devir = personel['yillik_izin_devir'] or 0
+            toplam_hak = hak_edis + devir
+            
+            # Kullanılan yıllık izinler
+            cursor.execute("""
+                SELECT COALESCE(SUM(gun_sayisi), 0)
+                FROM personel_izin
+                WHERE personel_id = ? 
+                AND yillik_izin_kullanimi = 1
+                AND onay_durumu != 'reddedildi'
+            """, (personel_id,))
+            
+            kullanilan = cursor.fetchone()[0] or 0
+            kalan = toplam_hak - kullanilan
+            
+            conn.close()
+            
+            return {
+                'hak_edis': hak_edis,
+                'devir': devir,
+                'toplam_hak': toplam_hak,
+                'kullanilan': kullanilan,
+                'kalan': kalan
+            }
+            
+        except Exception as e:
+            logger.error(f"Yıllık izin durumu hatası: {e}")
+            return None
+    
+    def aylik_kesintili_izin_hesapla(self, personel_id, donem_ay, donem_yil):
+        """Belirli ay için kesintili izin günlerini hesapla"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # O ayın başı ve sonu
+            from datetime import datetime, timedelta
+            ay_basi = datetime(donem_yil, donem_ay, 1).date()
+            
+            if donem_ay == 12:
+                ay_sonu = datetime(donem_yil + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                ay_sonu = datetime(donem_yil, donem_ay + 1, 1).date() - timedelta(days=1)
+            
+            # Kesintili izinleri getir
+            cursor.execute("""
+                SELECT gun_sayisi, baslangic_tarihi, bitis_tarihi, izin_tipi
+                FROM personel_izin
+                WHERE personel_id = ?
+                AND ucretli_mi = 0
+                AND onay_durumu = 'onaylandi'
+                AND (
+                    (baslangic_tarihi BETWEEN ? AND ?)
+                    OR (bitis_tarihi BETWEEN ? AND ?)
+                    OR (baslangic_tarihi <= ? AND bitis_tarihi >= ?)
+                )
+            """, (personel_id, ay_basi, ay_sonu, ay_basi, ay_sonu, ay_basi, ay_sonu))
+            
+            izinler = cursor.fetchall()
+            toplam_gun = 0
+            
+            for izin in izinler:
+                gun_sayisi = izin[0]
+                baslangic = datetime.strptime(izin[1], '%Y-%m-%d').date()
+                bitis = datetime.strptime(izin[2], '%Y-%m-%d').date()
+                izin_tipi = izin[3]
+                
+                # İzin bu aya düşüyorsa
+                if baslangic <= ay_sonu and bitis >= ay_basi:
+                    # O ay içindeki günleri hesapla
+                    izin_ay_basi = max(baslangic, ay_basi)
+                    izin_ay_sonu = min(bitis, ay_sonu)
+                    ay_icindeki_gun = (izin_ay_sonu - izin_ay_basi).days + 1
+                    
+                    # Hastalık izni özel durumu (ilk 2 gün ücretli)
+                    if izin_tipi == 'hastalik':
+                        kesintili_gun = max(0, gun_sayisi - 2)
+                        # Ay içindeki gün oranla
+                        toplam_gun += min(kesintili_gun, ay_icindeki_gun)
+                    else:
+                        toplam_gun += ay_icindeki_gun
+            
+            conn.close()
+            
+            return toplam_gun
+            
+        except Exception as e:
+            logger.error(f"Aylık kesintili izin hesaplama hatası: {e}")
+            return 0
+    
+    def izin_ozet_rapor(self, personel_id=None, donem_yil=None):
+        """İzin özet raporu - Tüm personel veya tek personel"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            query = """
+                SELECT 
+                    p.id as personel_id,
+                    p.ad,
+                    p.soyad,
+                    p.yillik_izin_hak_edis,
+                    p.yillik_izin_devir,
+                    COUNT(CASE WHEN i.izin_tipi = 'yillik' THEN 1 END) as yillik_adet,
+                    COALESCE(SUM(CASE WHEN i.yillik_izin_kullanimi = 1 THEN i.gun_sayisi ELSE 0 END), 0) as yillik_kullanilan,
+                    COUNT(CASE WHEN i.izin_tipi = 'ucretsiz' THEN 1 END) as ucretsiz_adet,
+                    COALESCE(SUM(CASE WHEN i.izin_tipi = 'ucretsiz' THEN i.gun_sayisi ELSE 0 END), 0) as ucretsiz_gun,
+                    COUNT(CASE WHEN i.izin_tipi = 'hastalik' THEN 1 END) as hastalik_adet,
+                    COALESCE(SUM(CASE WHEN i.izin_tipi = 'hastalik' THEN i.gun_sayisi ELSE 0 END), 0) as hastalik_gun,
+                    COUNT(CASE WHEN i.izin_tipi = 'mazeret' THEN 1 END) as mazeret_adet,
+                    COALESCE(SUM(CASE WHEN i.izin_tipi = 'mazeret' THEN i.gun_sayisi ELSE 0 END), 0) as mazeret_gun,
+                    COALESCE(SUM(CASE WHEN i.ucretli_mi = 0 THEN i.gun_sayisi ELSE 0 END), 0) as toplam_kesintili
+                FROM personel p
+                LEFT JOIN personel_izin i ON p.id = i.personel_id
+                WHERE p.calisma_durumu = 'aktif'
+            """
+            params = []
+            
+            if personel_id:
+                query += " AND p.id = ?"
+                params.append(personel_id)
+            
+            if donem_yil:
+                query += " AND strftime('%Y', i.baslangic_tarihi) = ?"
+                params.append(str(donem_yil))
+            
+            query += " GROUP BY p.id, p.ad, p.soyad, p.yillik_izin_hak_edis, p.yillik_izin_devir"
+            query += " ORDER BY p.ad, p.soyad"
+            
+            cursor.execute(query, params)
+            results = cursor.fetchall()
+            
+            rapor = []
+            for row in results:
+                data = dict(row)
+                hak_edis = data['yillik_izin_hak_edis'] or 14
+                devir = data['yillik_izin_devir'] or 0
+                toplam_hak = hak_edis + devir
+                kullanilan = data['yillik_kullanilan']
+                kalan = toplam_hak - kullanilan
+                
+                data['yillik_toplam_hak'] = toplam_hak
+                data['yillik_kalan'] = kalan
+                rapor.append(data)
+            
+            conn.close()
+            return rapor
+            
+        except Exception as e:
+            logger.error(f"İzin özet rapor hatası: {e}")
+            return []
+
+         
     def personel_sil(self, personel_id, admin_sifre):
         """Personel kaydını sil - Cari'yi de siler (hareket yoksa)"""
         conn = None
@@ -1838,19 +2231,25 @@ class PersonelDatabase:
             logger.error(f"Maaş tanımlama hatası: {e}")
             return False
     
+    # database.py içinde PersonelDatabase sınıfında
+# maas_odeme_kaydet() fonksiyonunu BUL ve DEĞİŞTİR
+# Yaklaşık satır 850 civarında
+
     def maas_odeme_kaydet(self, data):
-        """Maaş ödemesi kaydet (SADECE hesaplama, ödeme değil)"""
+        """Maaş ödemesi kaydet - Yardımlar dahil (SADECE hesaplama, ödeme değil)"""
         conn = None
         try:
-            conn = sqlite3.connect(self.db_path, timeout=30.0)  # TIMEOUT EKLE
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
             cursor = conn.cursor()
             
             # Maaş kaydı oluştur - DURUM: beklemede
             cursor.execute('''
                 INSERT INTO maas_odeme
                 (personel_id, cari_id, donem_ay, donem_yil, brut_maas, net_maas,
-                 ucretsiz_izin_gun, ucretsiz_izin_kesinti, fazla_mesai_saat, fazla_mesai_ucret,
-                 prim, bonus, odenecek_tutar, odeme_tarihi, odeme_yontemi, odeme_durumu,
+                 ucretsiz_izin_gun, ucretsiz_izin_kesinti, 
+                 fazla_mesai_saat, fazla_mesai_ucret,
+                 prim, bonus, odenecek_tutar, 
+                 odeme_tarihi, odeme_yontemi, odeme_durumu,
                  notlar, olusturan_kullanici)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
@@ -1897,6 +2296,19 @@ class PersonelDatabase:
         finally:
             if conn:
                 conn.close()
+
+            # NOT: Eğer maas_odeme tablosuna yardım kolonları eklenmediyse, aşağıdaki SQL'i çalıştırın:
+
+            """
+            -- SQLite veritabanında manuel olarak çalıştırılacak (sadece gerekirse):
+
+            ALTER TABLE maas_odeme ADD COLUMN yol_yardimi REAL DEFAULT 0;
+            ALTER TABLE maas_odeme ADD COLUMN yemek_yardimi REAL DEFAULT 0;
+            ALTER TABLE maas_odeme ADD COLUMN cocuk_yardimi REAL DEFAULT 0;
+            ALTER TABLE maas_odeme ADD COLUMN diger_odenekler REAL DEFAULT 0;
+
+            -- Veya init_personel_tables() fonksiyonunda tabloya bu kolonları ekleyin
+            """
 
     
     def maas_listele(self, donem_ay=None, donem_yil=None, personel_id=None, cari_turu=None, alt_turu=None):
@@ -1946,6 +2358,369 @@ class PersonelDatabase:
         except Exception as e:
             logger.error(f"Maaş listeleme hatası: {e}")
             return []
+   
+
+    def upgrade_personel_tables_izin(self):
+        """Personel tablosuna izin takip alanları ekle"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Personel tablosuna yıllık izin alanları ekle
+            cursor.execute("PRAGMA table_info(personel)")
+            existing_cols = {col[1] for col in cursor.fetchall()}
+            
+            new_columns = {
+                'yillik_izin_hak_edis': "ALTER TABLE personel ADD COLUMN yillik_izin_hak_edis INTEGER DEFAULT 14",
+                'yillik_izin_devir': "ALTER TABLE personel ADD COLUMN yillik_izin_devir INTEGER DEFAULT 0",
+                'yillik_izin_donemi': "ALTER TABLE personel ADD COLUMN yillik_izin_donemi INTEGER"
+            }
+            
+            for col_name, query in new_columns.items():
+                if col_name not in existing_cols:
+                    cursor.execute(query)
+                    logger.info(f"Personel tablosuna {col_name} eklendi")
+            
+            # personel_izin tablosuna yeni alanlar ekle
+            cursor.execute("PRAGMA table_info(personel_izin)")
+            existing_izin_cols = {col[1] for col in cursor.fetchall()}
+            
+            izin_columns = {
+                'ucretli_mi': "ALTER TABLE personel_izin ADD COLUMN ucretli_mi BOOLEAN DEFAULT 1",
+                'yillik_izin_kullanimi': "ALTER TABLE personel_izin ADD COLUMN yillik_izin_kullanimi BOOLEAN DEFAULT 0"
+            }
+            
+            for col_name, query in izin_columns.items():
+                if col_name not in existing_izin_cols:
+                    cursor.execute(query)
+                    logger.info(f"personel_izin tablosuna {col_name} eklendi")
+            
+            conn.commit()
+            conn.close()
+            logger.info("İzin sistemi alanları başarıyla eklendi")
+            
+        except Exception as e:
+            logger.warning(f"İzin alanları güncellenemedi: {e}")
+
+    # ==================== İZİN YÖNETİMİ ====================
+    
+    def izin_ekle(self, izin_data):
+        """Yeni izin kaydı ekle - Yıllık izin kotası kontrolü ile"""
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            personel_id = izin_data['personel_id']
+            gun_sayisi = float(izin_data['gun_sayisi'])
+            yillik_izin_kullanimi = izin_data.get('yillik_izin_kullanimi', False)
+            
+            # Yıllık izin kullanımı kontrolü
+            if yillik_izin_kullanimi:
+                cursor.execute("""
+                    SELECT yillik_izin_hak_edis, yillik_izin_devir 
+                    FROM personel 
+                    WHERE id = ?
+                """, (personel_id,))
+                
+                result = cursor.fetchone()
+                if not result:
+                    return False, "Personel bulunamadı"
+                
+                hak_edis = result[0] or 14
+                devir = result[1] or 0
+                toplam_hak = hak_edis + devir
+                
+                # Kullanılan yıllık izinleri hesapla
+                cursor.execute("""
+                    SELECT COALESCE(SUM(gun_sayisi), 0)
+                    FROM personel_izin
+                    WHERE personel_id = ? 
+                    AND yillik_izin_kullanimi = 1
+                    AND onay_durumu != 'reddedildi'
+                """, (personel_id,))
+                
+                kullanilan = cursor.fetchone()[0] or 0
+                kalan = toplam_hak - kullanilan
+                
+                if gun_sayisi > kalan:
+                    return False, f"Yetersiz yıllık izin hakkı! Kalan: {kalan} gün, Talep: {gun_sayisi} gün"
+            
+            # İzin kaydını ekle
+            cursor.execute('''
+                INSERT INTO personel_izin
+                (personel_id, izin_tipi, baslangic_tarihi, bitis_tarihi, gun_sayisi, 
+                 aciklama, onay_durumu, ucretli_mi, yillik_izin_kullanimi)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                personel_id,
+                izin_data['izin_tipi'],
+                izin_data['baslangic_tarihi'],
+                izin_data['bitis_tarihi'],
+                gun_sayisi,
+                izin_data.get('aciklama', ''),
+                'onaylandi',  # Otomatik onay
+                izin_data.get('ucretli_mi', True),
+                yillik_izin_kullanimi
+            ))
+            
+            izin_id = cursor.lastrowid
+            conn.commit()
+            
+            logger.info(f"İzin kaydı eklendi: ID {izin_id}, Personel: {personel_id}")
+            return True, izin_id
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"İzin ekleme hatası: {e}")
+            return False, str(e)
+        finally:
+            if conn:
+                conn.close()
+    
+    def izin_listele(self, personel_id=None, baslangic=None, bitis=None, izin_tipi=None):
+        """İzinleri listele"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            query = """
+                SELECT 
+                    i.*,
+                    p.ad,
+                    p.soyad,
+                    p.tc_kimlik
+                FROM personel_izin i
+                JOIN personel p ON i.personel_id = p.id
+                WHERE 1=1
+            """
+            params = []
+            
+            if personel_id:
+                query += " AND i.personel_id = ?"
+                params.append(personel_id)
+            
+            if baslangic:
+                query += " AND i.baslangic_tarihi >= ?"
+                params.append(baslangic)
+            
+            if bitis:
+                query += " AND i.bitis_tarihi <= ?"
+                params.append(bitis)
+            
+            if izin_tipi:
+                query += " AND i.izin_tipi = ?"
+                params.append(izin_tipi)
+            
+            query += " ORDER BY i.baslangic_tarihi DESC"
+            
+            cursor.execute(query, params)
+            results = cursor.fetchall()
+            conn.close()
+            
+            return [dict(row) for row in results]
+            
+        except Exception as e:
+            logger.error(f"İzin listeleme hatası: {e}")
+            return []
+    
+    def izin_sil(self, izin_id):
+        """İzin kaydını sil"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute("DELETE FROM personel_izin WHERE id = ?", (izin_id,))
+            
+            conn.commit()
+            conn.close()
+            
+            logger.info(f"İzin kaydı silindi: ID {izin_id}")
+            return True, "İzin başarıyla silindi"
+            
+        except Exception as e:
+            logger.error(f"İzin silme hatası: {e}")
+            return False, str(e)
+    
+    def yillik_izin_durumu(self, personel_id):
+        """Personelin yıllık izin durumunu getir"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            # Personel bilgileri
+            cursor.execute("""
+                SELECT 
+                    yillik_izin_hak_edis,
+                    yillik_izin_devir,
+                    yillik_izin_donemi,
+                    ise_baslama_tarihi
+                FROM personel
+                WHERE id = ?
+            """, (personel_id,))
+            
+            personel = cursor.fetchone()
+            if not personel:
+                return None
+            
+            hak_edis = personel['yillik_izin_hak_edis'] or 14
+            devir = personel['yillik_izin_devir'] or 0
+            toplam_hak = hak_edis + devir
+            
+            # Kullanılan yıllık izinler
+            cursor.execute("""
+                SELECT COALESCE(SUM(gun_sayisi), 0)
+                FROM personel_izin
+                WHERE personel_id = ? 
+                AND yillik_izin_kullanimi = 1
+                AND onay_durumu != 'reddedildi'
+            """, (personel_id,))
+            
+            kullanilan = cursor.fetchone()[0] or 0
+            kalan = toplam_hak - kullanilan
+            
+            conn.close()
+            
+            return {
+                'hak_edis': hak_edis,
+                'devir': devir,
+                'toplam_hak': toplam_hak,
+                'kullanilan': kullanilan,
+                'kalan': kalan
+            }
+            
+        except Exception as e:
+            logger.error(f"Yıllık izin durumu hatası: {e}")
+            return None
+    
+    def aylik_kesintili_izin_hesapla(self, personel_id, donem_ay, donem_yil):
+        """Belirli ay için kesintili izin günlerini hesapla"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # O ayın başı ve sonu
+            from datetime import datetime, timedelta
+            ay_basi = datetime(donem_yil, donem_ay, 1).date()
+            
+            if donem_ay == 12:
+                ay_sonu = datetime(donem_yil + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                ay_sonu = datetime(donem_yil, donem_ay + 1, 1).date() - timedelta(days=1)
+            
+            # Kesintili izinleri getir
+            cursor.execute("""
+                SELECT gun_sayisi, baslangic_tarihi, bitis_tarihi, izin_tipi
+                FROM personel_izin
+                WHERE personel_id = ?
+                AND ucretli_mi = 0
+                AND onay_durumu = 'onaylandi'
+                AND (
+                    (baslangic_tarihi BETWEEN ? AND ?)
+                    OR (bitis_tarihi BETWEEN ? AND ?)
+                    OR (baslangic_tarihi <= ? AND bitis_tarihi >= ?)
+                )
+            """, (personel_id, ay_basi, ay_sonu, ay_basi, ay_sonu, ay_basi, ay_sonu))
+            
+            izinler = cursor.fetchall()
+            toplam_gun = 0
+            
+            for izin in izinler:
+                gun_sayisi = izin[0]
+                baslangic = datetime.strptime(izin[1], '%Y-%m-%d').date()
+                bitis = datetime.strptime(izin[2], '%Y-%m-%d').date()
+                izin_tipi = izin[3]
+                
+                # İzin bu aya düşüyorsa
+                if baslangic <= ay_sonu and bitis >= ay_basi:
+                    # O ay içindeki günleri hesapla
+                    izin_ay_basi = max(baslangic, ay_basi)
+                    izin_ay_sonu = min(bitis, ay_sonu)
+                    ay_icindeki_gun = (izin_ay_sonu - izin_ay_basi).days + 1
+                    
+                    # Hastalık izni özel durumu (ilk 2 gün ücretli)
+                    if izin_tipi == 'hastalik':
+                        kesintili_gun = max(0, gun_sayisi - 2)
+                        # Ay içindeki gün oranla
+                        toplam_gun += min(kesintili_gun, ay_icindeki_gun)
+                    else:
+                        toplam_gun += ay_icindeki_gun
+            
+            conn.close()
+            
+            return toplam_gun
+            
+        except Exception as e:
+            logger.error(f"Aylık kesintili izin hesaplama hatası: {e}")
+            return 0
+    
+    def izin_ozet_rapor(self, personel_id=None, donem_yil=None):
+        """İzin özet raporu - Tüm personel veya tek personel"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            query = """
+                SELECT 
+                    p.id as personel_id,
+                    p.ad,
+                    p.soyad,
+                    p.yillik_izin_hak_edis,
+                    p.yillik_izin_devir,
+                    COUNT(CASE WHEN i.izin_tipi = 'yillik' THEN 1 END) as yillik_adet,
+                    COALESCE(SUM(CASE WHEN i.yillik_izin_kullanimi = 1 THEN i.gun_sayisi ELSE 0 END), 0) as yillik_kullanilan,
+                    COUNT(CASE WHEN i.izin_tipi = 'ucretsiz' THEN 1 END) as ucretsiz_adet,
+                    COALESCE(SUM(CASE WHEN i.izin_tipi = 'ucretsiz' THEN i.gun_sayisi ELSE 0 END), 0) as ucretsiz_gun,
+                    COUNT(CASE WHEN i.izin_tipi = 'hastalik' THEN 1 END) as hastalik_adet,
+                    COALESCE(SUM(CASE WHEN i.izin_tipi = 'hastalik' THEN i.gun_sayisi ELSE 0 END), 0) as hastalik_gun,
+                    COUNT(CASE WHEN i.izin_tipi = 'mazeret' THEN 1 END) as mazeret_adet,
+                    COALESCE(SUM(CASE WHEN i.izin_tipi = 'mazeret' THEN i.gun_sayisi ELSE 0 END), 0) as mazeret_gun,
+                    COALESCE(SUM(CASE WHEN i.ucretli_mi = 0 THEN i.gun_sayisi ELSE 0 END), 0) as toplam_kesintili
+                FROM personel p
+                LEFT JOIN personel_izin i ON p.id = i.personel_id
+                WHERE p.calisma_durumu = 'aktif'
+            """
+            params = []
+            
+            if personel_id:
+                query += " AND p.id = ?"
+                params.append(personel_id)
+            
+            if donem_yil:
+                query += " AND strftime('%Y', i.baslangic_tarihi) = ?"
+                params.append(str(donem_yil))
+            
+            query += " GROUP BY p.id, p.ad, p.soyad, p.yillik_izin_hak_edis, p.yillik_izin_devir"
+            query += " ORDER BY p.ad, p.soyad"
+            
+            cursor.execute(query, params)
+            results = cursor.fetchall()
+            
+            rapor = []
+            for row in results:
+                data = dict(row)
+                hak_edis = data['yillik_izin_hak_edis'] or 14
+                devir = data['yillik_izin_devir'] or 0
+                toplam_hak = hak_edis + devir
+                kullanilan = data['yillik_kullanilan']
+                kalan = toplam_hak - kullanilan
+                
+                data['yillik_toplam_hak'] = toplam_hak
+                data['yillik_kalan'] = kalan
+                rapor.append(data)
+            
+            conn.close()
+            return rapor
+            
+        except Exception as e:
+            logger.error(f"İzin özet rapor hatası: {e}")
+            return []
+
+       
 
 
 # Global instance

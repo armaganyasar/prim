@@ -2391,10 +2391,13 @@ def personel_maas_tanimla():
         logger.error(f"Maaş tanımlama hatası: {e}")
         return jsonify({"error": "Maaş tanımlanamadı"}), 500
 
+# app.py içinde mevcut /api/personel/maas/hesapla route'unu BUL ve DEĞİŞTİR
+# Yaklaşık satır 1100 civarında olmalı
+
 @app.route("/api/personel/maas/hesapla", methods=["POST"])
 @login_required
-def personel_maas_hesapla():
-    """Maaş hesaplama (kesinti ve ekstralar dahil)"""
+def maas_hesapla_api():
+    """Maaş hesaplama - Yardımlar Otomatik Eklenmiş"""
     try:
         data = request.get_json() or {}
         
@@ -2402,50 +2405,87 @@ def personel_maas_hesapla():
         donem_ay = data.get('donem_ay')
         donem_yil = data.get('donem_yil')
         
-        # Personel detayını ve maaş bilgisini getir
+        if not all([personel_id, donem_ay, donem_yil]):
+            return jsonify({"error": "Eksik parametreler"}), 400
+        
+        # Personel maaş bilgilerini getir
         detay = personel_db.personel_detay_getir(personel_id)
         
-        if not detay or not detay['maas']:
-            return jsonify({"error": "Personel veya maaş bilgisi bulunamadı"}), 404
+        if not detay or not detay.get('maas'):
+            return jsonify({"error": "Personel maaş bilgisi bulunamadı"}), 404
         
-        maas_bilgi = detay['maas']
+        maas_bilgisi = detay['maas']
         
-        # Temel maaş
-        net_maas = float(maas_bilgi['net_maas'])
+        # Temel maaş bilgileri
+        brut_maas = float(maas_bilgisi.get('brut_maas', 0))
+        net_maas = float(maas_bilgisi.get('net_maas', 0))
+        
+        # OTOMATIK YARDIMLAR
+        yol_yardimi = float(maas_bilgisi.get('yol_yardimi', 0))
+        yemek_yardimi = float(maas_bilgisi.get('yemek_yardimi', 0))
+        cocuk_yardimi = float(maas_bilgisi.get('cocuk_yardimi', 0))
+        diger_odenekler = float(maas_bilgisi.get('diger_odenekler', 0))
+        
+        toplam_sabit_yardimlar = yol_yardimi + yemek_yardimi + cocuk_yardimi + diger_odenekler
         
         # Ücretsiz izin kesintisi
-        ucretsiz_izin_gun = int(data.get('ucretsiz_izin_gun', 0))
-        is_gunu = 30  # Ayda ortalama iş günü
-        ucretsiz_izin_kesinti = (net_maas / is_gunu) * ucretsiz_izin_gun if ucretsiz_izin_gun > 0 else 0
+        ucretsiz_izin_gun = float(data.get('ucretsiz_izin_gun', 0))
+        ucretsiz_izin_kesinti = (net_maas / 30) * ucretsiz_izin_gun if ucretsiz_izin_gun > 0 else 0
         
-        # Fazla mesai
+        # Fazla mesai (Saatlik ücret = Net Maaş / 220 saat, %50 fazlası)
         fazla_mesai_saat = float(data.get('fazla_mesai_saat', 0))
-        saatlik_ucret = net_maas / (is_gunu * 8)  # Günlük 8 saat varsayımı
-        fazla_mesai_ucret = saatlik_ucret * fazla_mesai_saat * 1.5  # %50 fazla
+        saatlik_ucret = net_maas / 220 if net_maas > 0 else 0
+        fazla_mesai_ucret = (saatlik_ucret * 1.5) * fazla_mesai_saat if fazla_mesai_saat > 0 else 0
         
-        # Prim ve bonus
+        # Manuel eklemeler
         prim = float(data.get('prim', 0))
         bonus = float(data.get('bonus', 0))
         
-        # Ödenecek tutar
-        odenecek_tutar = net_maas - ucretsiz_izin_kesinti + fazla_mesai_ucret + prim + bonus
+        # TOPLAM HESAPLAMA
+        odenecek_tutar = (
+            net_maas 
+            + toplam_sabit_yardimlar  # OTOMATIK EKLENEN
+            - ucretsiz_izin_kesinti 
+            + fazla_mesai_ucret 
+            + prim 
+            + bonus
+        )
+        
+        hesaplama = {
+            'brut_maas': brut_maas,
+            'net_maas': net_maas,
+            
+            # YARDIMLAR (OTOMATIK)
+            'yol_yardimi': yol_yardimi,
+            'yemek_yardimi': yemek_yardimi,
+            'cocuk_yardimi': cocuk_yardimi,
+            'diger_odenekler': diger_odenekler,
+            'toplam_sabit_yardimlar': toplam_sabit_yardimlar,
+            
+            # KESİNTİLER
+            'ucretsiz_izin_gun': ucretsiz_izin_gun,
+            'ucretsiz_izin_kesinti': ucretsiz_izin_kesinti,
+            
+            # EK ÖDEMELER
+            'fazla_mesai_saat': fazla_mesai_saat,
+            'fazla_mesai_ucret': fazla_mesai_ucret,
+            'prim': prim,
+            'bonus': bonus,
+            
+            # TOPLAM
+            'odenecek_tutar': odenecek_tutar
+        }
         
         return jsonify({
             "success": True,
-            "hesaplama": {
-                "brut_maas": float(maas_bilgi['brut_maas']),
-                "net_maas": net_maas,
-                "ucretsiz_izin_kesinti": round(ucretsiz_izin_kesinti, 2),
-                "fazla_mesai_ucret": round(fazla_mesai_ucret, 2),
-                "prim": prim,
-                "bonus": bonus,
-                "odenecek_tutar": round(odenecek_tutar, 2)
-            }
+            "hesaplama": hesaplama
         })
         
     except Exception as e:
         logger.error(f"Maaş hesaplama hatası: {e}")
-        return jsonify({"error": "Maaş hesaplanamadı"}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Hesaplama yapılamadı: {str(e)}"}), 500
 
 @app.route("/api/personel/maas/kaydet", methods=["POST"])
 @admin_required
@@ -3519,6 +3559,232 @@ def tedaviler():
         logger.error(f"Tedaviler sayfası yüklenirken hata: {e}")
         flash("Sayfa yüklenirken bir hata oluştu.", "danger")
         return redirect(url_for("home"))
+
+# ==================== İZİN YÖNETİMİ ROUTES ====================
+
+@app.route("/izin_yonetimi")
+@login_required
+def izin_yonetimi():
+    """İzin yönetimi ana sayfası"""
+    if session.get("role") != "admin":
+        flash("Bu sayfaya erişim yetkiniz yok", "danger")
+        return redirect(url_for("home"))
+    
+    try:
+        # Şubeleri getir
+        query = "SELECT CARI_ID AS id, UNVANI AS name FROM subeler WHERE SILINDI = :silindi ORDER BY UNVANI"
+        df = execute_query(query, {"silindi": "false"})
+        branches = df.to_dict("records")
+        
+        # Aktif personelleri getir
+        personeller = personel_db.personel_listele(sadece_aktif=True)
+        
+        return render_template("izin_yonetimi.html", 
+                             branches=branches,
+                             personeller=personeller)
+        
+    except Exception as e:
+        logger.error(f"İzin yönetimi sayfası yüklenirken hata: {e}")
+        flash("Sayfa yüklenirken bir hata oluştu", "danger")
+        return redirect(url_for("home"))
+
+@app.route("/api/izin/ekle", methods=["POST"])
+@admin_required
+def izin_ekle_api():
+    """Yeni izin kaydı ekle"""
+    try:
+        data = request.get_json() or {}
+        
+        # Gerekli alanları kontrol et
+        required_fields = ["personel_id", "izin_tipi", "baslangic_tarihi", "bitis_tarihi", "gun_sayisi"]
+        valid, error_msg = validate_required_fields(data, required_fields)
+        if not valid:
+            return jsonify({"error": error_msg}), 400
+        
+        # İzin ekle
+        success, result = personel_db.izin_ekle(data)
+        
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "İzin başarıyla kaydedildi",
+                "izin_id": result
+            })
+        else:
+            return jsonify({"error": result}), 400
+        
+    except Exception as e:
+        logger.error(f"İzin ekleme API hatası: {e}")
+        return jsonify({"error": "İzin eklenirken hata oluştu"}), 500
+
+@app.route("/api/izin/liste")
+@login_required
+def izin_liste_api():
+    """İzinleri listele"""
+    try:
+        personel_id = request.args.get("personel_id")
+        baslangic = request.args.get("baslangic")
+        bitis = request.args.get("bitis")
+        izin_tipi = request.args.get("izin_tipi")
+        
+        izinler = personel_db.izin_listele(
+            personel_id=personel_id,
+            baslangic=baslangic,
+            bitis=bitis,
+            izin_tipi=izin_tipi
+        )
+        
+        return jsonify({
+            "success": True,
+            "data": izinler
+        })
+        
+    except Exception as e:
+        logger.error(f"İzin listeleme API hatası: {e}")
+        return jsonify({"error": "İzinler yüklenemedi"}), 500
+
+@app.route("/api/izin/sil/<int:izin_id>", methods=["DELETE"])
+@admin_required
+def izin_sil_api(izin_id):
+    """İzin kaydını sil"""
+    try:
+        success, message = personel_db.izin_sil(izin_id)
+        
+        if success:
+            return jsonify({
+                "success": True,
+                "message": message
+            })
+        else:
+            return jsonify({"error": message}), 400
+        
+    except Exception as e:
+        logger.error(f"İzin silme API hatası: {e}")
+        return jsonify({"error": "İzin silinemedi"}), 500
+
+@app.route("/api/izin/yillik_durum/<int:personel_id>")
+@login_required
+def yillik_izin_durum_api(personel_id):
+    """Personelin yıllık izin durumunu getir"""
+    try:
+        durum = personel_db.yillik_izin_durumu(personel_id)
+        
+        if durum:
+            return jsonify({
+                "success": True,
+                "data": durum
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Personel bulunamadı"
+            }), 404
+        
+    except Exception as e:
+        logger.error(f"Yıllık izin durum API hatası: {e}")
+        return jsonify({"error": "Yıllık izin durumu alınamadı"}), 500
+
+@app.route("/api/izin/aylik_kesinti", methods=["POST"])
+@login_required
+def aylik_kesinti_api():
+    """Belirli ay için kesintili izin günlerini hesapla"""
+    try:
+        data = request.get_json() or {}
+        
+        personel_id = data.get("personel_id")
+        donem_ay = data.get("donem_ay")
+        donem_yil = data.get("donem_yil")
+        
+        if not all([personel_id, donem_ay, donem_yil]):
+            return jsonify({"error": "Eksik parametreler"}), 400
+        
+        kesintili_gun = personel_db.aylik_kesintili_izin_hesapla(
+            personel_id,
+            donem_ay,
+            donem_yil
+        )
+        
+        return jsonify({
+            "success": True,
+            "kesintili_gun": kesintili_gun
+        })
+        
+    except Exception as e:
+        logger.error(f"Aylık kesinti API hatası: {e}")
+        return jsonify({"error": "Kesinti hesaplanamadı"}), 500
+
+@app.route("/api/izin/ozet_rapor")
+@login_required
+def izin_ozet_rapor_api():
+    """İzin özet raporu"""
+    try:
+        personel_id = request.args.get("personel_id")
+        donem_yil = request.args.get("donem_yil")
+        
+        rapor = personel_db.izin_ozet_rapor(
+            personel_id=personel_id,
+            donem_yil=donem_yil
+        )
+        
+        return jsonify({
+            "success": True,
+            "data": rapor
+        })
+        
+    except Exception as e:
+        logger.error(f"İzin rapor API hatası: {e}")
+        return jsonify({"error": "Rapor oluşturulamadı"}), 500
+
+@app.route("/api/izin/excel_export")
+@login_required
+def izin_excel_export():
+    """İzin raporunu Excel olarak indir"""
+    try:
+        import io
+        from datetime import datetime
+        
+        donem_yil = request.args.get("donem_yil", datetime.now().year)
+        
+        rapor = personel_db.izin_ozet_rapor(donem_yil=donem_yil)
+        
+        if not rapor:
+            flash("Export için veri bulunamadı", "warning")
+            return redirect(url_for("izin_yonetimi"))
+        
+        # DataFrame oluştur
+        df = pd.DataFrame(rapor)
+        
+        # Kolon isimleri düzenle
+        df = df.rename(columns={
+            'ad': 'Ad',
+            'soyad': 'Soyad',
+            'yillik_toplam_hak': 'Yıllık Hak',
+            'yillik_kullanilan': 'Kullanılan',
+            'yillik_kalan': 'Kalan',
+            'ucretsiz_gun': 'Ücretsiz İzin',
+            'hastalik_gun': 'Hastalık İzni',
+            'mazeret_gun': 'Mazeret İzni',
+            'toplam_kesintili': 'Kesintili Gün'
+        })
+        
+        # Excel dosyası oluştur
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='İzin Raporu', index=False)
+        
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'izin_raporu_{donem_yil}.xlsx'
+        )
+        
+    except Exception as e:
+        logger.error(f"Excel export hatası: {e}")
+        flash("Excel dosyası oluşturulamadı", "danger")
+        return redirect(url_for("izin_yonetimi"))        
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)        
