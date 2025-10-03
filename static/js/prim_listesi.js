@@ -332,6 +332,10 @@ function displayPrimDetail(detay) {
     const implantGiderleri = detay.implant_giderleri || [];
     const digerGiderler = detay.diger_giderler || [];
     
+    // YENİ: Net Ciro ve Hak Ediş Verileri
+    const netCiroEklemeleri = detay.net_ciro_eklemeleri || [];
+    const hakedisEklemeleri = detay.hakedis_eklemeleri || [];
+    
     let html = '<div class="row"><div class="col-md-6"><div class="card"><div class="card-header bg-primary text-white">Genel Bilgiler</div><div class="card-body"><table class="table table-sm">';
     html += `<tr><td>Prim ID:</td><td>#${primData.id}</td></tr>`;
     html += `<tr><td>Hekim:</td><td>${primData.doktor_adi}</td></tr>`;
@@ -356,7 +360,53 @@ function displayPrimDetail(detay) {
         html += '</tbody></table></div></div>';
     }
     
-    // Giderler
+    // YENİ: Net Ciro Eklemeleri
+    if (netCiroEklemeleri.length > 0) {
+        const toplamNetCiro = netCiroEklemeleri.reduce((sum, item) => sum + parseFloat(item.tutar || 0), 0);
+        
+        html += '<div class="card mt-3"><div class="card-header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">';
+        html += '<i class="fas fa-plus-circle"></i> Net Ciro Eklemeleri</div><div class="card-body">';
+        html += '<table class="table table-sm table-hover"><thead class="table-success"><tr><th>Tarih</th><th>Açıklama</th>';
+        html += '<th>Kategori</th><th class="text-end">Tutar</th></tr></thead><tbody>';
+        
+        netCiroEklemeleri.forEach(item => {
+            html += `<tr style="border-left: 4px solid #38ef7d;">`;
+            html += `<td>${formatDate(item.tarih)}</td>`;
+            html += `<td>${item.aciklama || '-'}</td>`;
+            html += `<td><span class="badge bg-success">${item.kategori || 'diger'}</span></td>`;
+            html += `<td class="text-end text-success fw-bold">${formatCurrency(item.tutar)}</td>`;
+            html += `</tr>`;
+        });
+        
+        html += `<tfoot class="table-light"><tr><td colspan="3" class="text-end"><strong>Net Ciro Ekleme Toplamı:</strong></td>`;
+        html += `<td class="text-end"><strong class="text-success fs-5">${formatCurrency(toplamNetCiro)}</strong></td></tr></tfoot>`;
+        html += '</tbody></table></div></div>';
+    }
+    
+    // YENİ: Hak Ediş Eklemeleri
+    if (hakedisEklemeleri.length > 0) {
+        const toplamHakedis = hakedisEklemeleri.reduce((sum, item) => sum + parseFloat(item.tutar || 0), 0);
+        
+        html += '<div class="card mt-3"><div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">';
+        html += '<i class="fas fa-hand-holding-usd"></i> Hak Ediş Eklemeleri</div><div class="card-body">';
+        html += '<table class="table table-sm table-hover"><thead class="table-primary"><tr><th>Tarih</th><th>Açıklama</th>';
+        html += '<th>Kategori</th><th class="text-end">Tutar</th></tr></thead><tbody>';
+        
+        hakedisEklemeleri.forEach(item => {
+            html += `<tr style="border-left: 4px solid #764ba2;">`;
+            html += `<td>${formatDate(item.tarih)}</td>`;
+            html += `<td>${item.aciklama || '-'}</td>`;
+            html += `<td><span class="badge bg-primary">${item.kategori || 'bonus'}</span></td>`;
+            html += `<td class="text-end text-primary fw-bold">${formatCurrency(item.tutar)}</td>`;
+            html += `</tr>`;
+        });
+        
+        html += `<tfoot class="table-light"><tr><td colspan="3" class="text-end"><strong>Hak Ediş Ekleme Toplamı:</strong></td>`;
+        html += `<td class="text-end"><strong class="text-primary fs-5">${formatCurrency(toplamHakedis)}</strong></td></tr></tfoot>`;
+        html += '</tbody></table></div></div>';
+    }
+    
+    // Giderler (Mevcut kod devam ediyor...)
     const toplamLab = laboratuvarGiderleri.reduce((s, g) => s + parseFloat(g.tutar || 0), 0);
     const toplamImplant = implantGiderleri.reduce((s, g) => s + parseFloat(g.tutar || 0), 0);
     const toplamDiger = digerGiderler.reduce((s, g) => s + parseFloat(g.tutar || 0), 0);
