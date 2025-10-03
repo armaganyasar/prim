@@ -2064,25 +2064,23 @@ def cari_hareket_liste_api(cari_id):
 @app.route("/api/cari/liste")
 @login_required
 def cari_liste_api():
-    """Tüm carileri listele (opsiyonel: cari_turu, alt_turu)"""
+    """Cari listesini getir (filtreli)"""
     try:
-        # Query parametrelerini al
         cari_turu = request.args.get("cari_turu")
         alt_turu = request.args.get("alt_turu")
-
-        # DB fonksiyonuna filtreleri ilet
+        cari_grup = request.args.get("cari_grup")
+        
         cariler = cari_db.cari_listele(
             cari_turu=cari_turu if cari_turu else None,
             alt_turu=alt_turu if alt_turu else None
         )
-
+        
         return jsonify({"success": True, "data": cariler})
-
+        
     except Exception as e:
         logger.error(f"Cari listeleme hatası: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        return jsonify({"error": "Cariler yüklenemedi"}), 500
+        return jsonify({"error": "Cari listesi yüklenemedi"}), 500
+        
 
 @app.route("/api/cari/turler")
 @login_required

@@ -75,8 +75,6 @@
             color: white;
         }
         
-        .badge-cari { font-size: 0.85rem; padding: 0.4rem 0.6rem; }
-        
         .stat-card {
             background: white;
             padding: 1.5rem;
@@ -152,78 +150,38 @@
                 </div>
             </div>
         </div>
-<!-- Filtreler -->
-<div class="card mb-4">
-  <div class="card-body">
-    <div class="row g-3">
-      <div class="col-md-2">
-        <label class="form-label">Dönem Yıl</label>
-        <select class="form-select" id="filterYil">
-          <!-- JS ile doldurulacak -->
-        </select>
-      </div>
 
-      <div class="col-md-2">
-        <label class="form-label">Dönem Ay</label>
-        <select class="form-select" id="filterAy">
-          <option value="1">Ocak</option>
-          <option value="2">Şubat</option>
-          <option value="3">Mart</option>
-          <option value="4">Nisan</option>
-          <option value="5">Mayıs</option>
-          <option value="6">Haziran</option>
-          <option value="7">Temmuz</option>
-          <option value="8">Ağustos</option>
-          <option value="9">Eylül</option>
-          <option value="10">Ekim</option>
-          <option value="11">Kasım</option>
-          <option value="12">Aralık</option>
-        </select>
-      </div>
-
-      <div class="col-md-2">
-        <label class="form-label">Personel</label>
-        <select class="form-select" id="filterPersonel">
-          <option value="">Tüm Personel</option>
-          <!-- JS ile doldurulacak -->
-        </select>
-      </div>
-
-      <div class="col-md-2">
-        <label class="form-label">Cari Türü</label>
-        <select class="form-select" id="filterCariTuru">
-          <option value="">Tüm Türler</option>
-          <!-- JS ile doldurulacak -->
-        </select>
-      </div>
-
-      <div class="col-md-2">
-        <label class="form-label">Alt Türü</label>
-        <select class="form-select" id="filterAltTuru" disabled>
-          <option value="">Tüm Alt Türler</option>
-          <!-- JS ile doldurulacak -->
-        </select>
-      </div>
-
-      <div class="col-md-2 d-grid">
-        <label class="form-label">&nbsp;</label>
-        <button class="btn btn-primary" onclick="maasListele()">
-          <i class="fas fa-search"></i> Listele
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Maaş Listesi Sonuç Alanı -->
-<div class="card mb-4">
-  <div class="card-header">
-    <i class="fas fa-money-check-alt"></i> Maaş Listesi
-  </div>
-  <div class="card-body" id="maasListesi">
-    <p class="text-muted mb-0">Filtreleri seçip “Listele”ye tıklayın.</p>
-  </div>
-</div>
+        <!-- Cari Filtreleme -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-filter"></i> Cari Filtreleme</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label">Cari Türü</label>
+                        <select class="form-select" id="filterCariTuru">
+                            <option value="">Tümü</option>
+                            <!-- JS ile doldurulacak -->
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Alt Türü</label>
+                        <select class="form-select" id="filterAltTuru">
+                            <option value="">Tümü</option>
+                            <!-- JS ile doldurulacak -->
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <button class="btn btn-secondary w-100" onclick="temizleFiltreler()">
+                            <i class="fas fa-redo"></i> Filtreleri Temizle
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="row">	
             <!-- Sol Taraf: Cari Listesi -->

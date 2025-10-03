@@ -1,5 +1,5 @@
-// cari_yonetimi.js - Cari Hesap Yönetimi Sayfası (SON EKSİKSİZ GÜVENLİ SÜRÜM)
-console.log('Cari Yönetimi JS yüklendi - SON GÜVENLİ SÜRÜM');
+// cari_yonetimi.js - Cari Hesap Yönetimi Sayfası - TEMİZ VERSİYON
+console.log('Cari Yönetimi JS yüklendi');
 
 let currentCari = null;
 let allBranches = []; 
@@ -9,12 +9,8 @@ let currentHareketler = [];
 document.addEventListener('DOMContentLoaded', function() {
     loadInitialData();
     setupCariEventListeners();
-	loadCariGruplar();
-	loadCariTurleri(); 
-    // Maaş listesini otomatik yükle
-    maasListele();
+    loadCariTurleri();
 });
-
 
 function loadInitialData() {
     fetch('/api/branches')
@@ -28,23 +24,6 @@ function loadInitialData() {
             showAlert('Şubeler yüklenemedi.', 'danger');
             loadCariList(); 
         });
-}
-function loadCariGruplar() {
-    fetch('/api/cari/grup_liste')
-        .then(r => r.json())
-        .then(data => {
-            const select = document.getElementById('filterCariGrup');
-            select.innerHTML = '<option value="">Cari Grup Seç</option>';
-            if (data.success && data.data.length > 0) {
-                data.data.forEach(grup => {
-                    const opt = document.createElement('option');
-                    opt.value = grup.id || grup.grup_kodu; 
-                    opt.textContent = grup.ad || grup.grup_adi;
-                    select.appendChild(opt);
-                });
-            }
-        })
-        .catch(err => console.error("Cari grup listesi yüklenemedi:", err));
 }
 
 function setupCariEventListeners() {
@@ -72,6 +51,15 @@ function setupCariEventListeners() {
         e.preventDefault();
         saveCariHareket();
     });
+
+    // Filtre event listener'ları
+    const filterElements = ['filterCariTuru', 'filterAltTuru'];
+    filterElements.forEach(filterId => {
+        const filterEl = document.getElementById(filterId);
+        if (filterEl) {
+            filterEl.addEventListener('change', loadCariList);
+        }
+    });
 }
 
 // ========================
@@ -83,23 +71,94 @@ function loadCariList() {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>';
     
-    fetch('/api/cari/liste')
+    // Filtreleri al
+    const cariTuru = document.getElementById('filterCariTuru')?.value || '';
+    const altTuru = document.getElementById('filterAltTuru')?.value || '';
+    
+    // URL parametrelerini oluştur
+    const params = new URLSearchParams();
+    if (cariTuru) params.append('cari_turu', cariTuru);
+    if (altTuru) params.append('alt_turu', altTuru);
+    
+    fetch(`/api/cari/liste?${params.toString()}`)
         .then(response => response.json())
         .then(data => {
             allCariler = data.data || []; 
             tbody.innerHTML = '';
+            
             if (allCariler.length > 0) {
                 allCariler.forEach(cari => {
                     tbody.appendChild(createCariRow(cari));
                 });
+                updateStatistics();
             } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Henüz kayıtlı aktif cari hesap bulunmamaktadır.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Filtreye uygun cari hesap bulunamadı.</td></tr>';
+                resetStatistics();
             }
         })
         .catch(error => {
             console.error('Cari listeleme hatası:', error);
             tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Hata oluştu.</td></tr>';
+            resetStatistics();
         });
+}
+
+function updateStatistics() {
+    let toplamAlacak = 0;
+    let toplamBorc = 0;
+    
+    allCariler.forEach(cari => {
+        const bakiye = parseFloat(cari.bakiye) || 0;
+        if (bakiye > 0) {
+            toplamAlacak += bakiye;
+        } else {
+            toplamBorc += Math.abs(bakiye);
+        }
+    });
+    
+    document.getElementById('statToplamCari').textContent = allCariler.length;
+    document.getElementById('statToplamAlacak').textContent = formatCurrencyTurkish(toplamAlacak);
+    document.getElementById('statToplamBorc').textContent = formatCurrencyTurkish(toplamBorc);
+}
+
+function resetStatistics() {
+    document.getElementById('statToplamCari').textContent = '0';
+    document.getElementById('statToplamAlacak').textContent = '0 ₺';
+    document.getElementById('statToplamBorc').textContent = '0 ₺';
+}
+
+function temizleFiltreler() {
+    document.getElementById('filterCariTuru').value = '';
+    document.getElementById('filterAltTuru').value = '';
+    loadCariList();
+}
+
+function loadCariTurleri() {
+    fetch("/api/cari/turler")
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const turler = data.data.turler || [];
+                const altTurler = data.data.alt_turler || [];
+
+                const turSelect = document.getElementById("filterCariTuru");
+                if (turSelect) {
+                    turSelect.innerHTML = `<option value="">Tümü</option>`;
+                    turler.forEach(tur => {
+                        turSelect.innerHTML += `<option value="${tur}">${tur}</option>`;
+                    });
+                }
+
+                const altTurSelect = document.getElementById("filterAltTuru");
+                if (altTurSelect) {
+                    altTurSelect.innerHTML = `<option value="">Tümü</option>`;
+                    altTurler.forEach(alt => {
+                        altTurSelect.innerHTML += `<option value="${alt}">${alt}</option>`;
+                    });
+                }
+            }
+        })
+        .catch(err => console.error("Cari türleri yükleme hatası:", err));
 }
 
 function createCariRow(cari) {
@@ -132,7 +191,6 @@ function createCariRow(cari) {
     return tr;
 }
 
-
 function editCari(cariId) {
     const cari = allCariler.find(c => c.id === cariId);
     
@@ -157,7 +215,6 @@ function editCari(cariId) {
     
     window.scrollTo(0, 0); 
 }
-
 
 function saveCari() {
     const cariId = document.getElementById('cariId').value;
@@ -212,7 +269,6 @@ function saveCari() {
     });
 }
 
-
 function resetCariForm() {
     document.getElementById('cariId').value = '';
     document.getElementById('cariKodu').value = '';
@@ -240,18 +296,14 @@ function deleteCari(cariId, cariAdi) {
         body: JSON.stringify({ cari_id: cariId })
     })
     .then(response => {
-        // HTTP yanıtı 200-299 aralığında değilse bile, yanıtı JSON olarak işlemeye çalış
         if (!response.ok) {
-            // Yanıt gövdesini JSON olarak okuyup hatayı fırlat
             return response.json().then(errorData => {
-                // Eğer geçerli bir JSON yanıtıysa, hata mesajını al
                 throw new Error(errorData.error || `Sunucu tarafından bilinmeyen hata (Durum: ${response.status})`);
             }).catch(e => {
-                // JSON okuma başarısız olursa, genel bir hata mesajı fırlat
                 if (e.message.includes('JSON')) {
                     throw new Error(`Sunucudan geçerli bir JSON yanıtı alınamadı. ${e.message}`);
                 }
-                throw e; // Zaten JSON'dan gelen hatayı fırlat
+                throw e;
             });
         }
         return response.json();
@@ -261,14 +313,12 @@ function deleteCari(cariId, cariAdi) {
             showAlert('Cari hesap başarıyla silindi.', 'success');
             loadCariList();
         } else {
-            // Bu blok, response.ok true olsa bile (olmamalı), success:false durumunu yakalar
             showAlert(`Silme hatası: ${data.error}`, 'danger');
         }
     })
     .catch(error => {
-        // Burası fırlatılan Error objesini yakalar
         const errorMessage = error.message.includes('400') 
-            ? error.message.replace('Error: ', '') // Sadece temiz mesajı göster (hata mesajı JSON'dan geldi)
+            ? error.message.replace('Error: ', '')
             : 'Sunucuya bağlanılamadı veya beklenmeyen bir hata oluştu: ' + error.message;
             
         showAlert(errorMessage, 'danger');
@@ -276,7 +326,7 @@ function deleteCari(cariId, cariAdi) {
 }
 
 // ========================
-// HEKİM EŞLEŞTİRME İŞLEMLERİ
+// HEKİM EŞLEŞTIRME İŞLEMLERİ
 // ========================
 
 function editEslestirme(cariId, cariAdi) {
@@ -431,7 +481,7 @@ function eslestirmeSil(eslestirmeId) {
 }
 
 // ========================
-// CARİ HAREKET İŞLEMLERİ (Ödeme Şekli ve Düzenleme Eklendi)
+// CARİ HAREKET İŞLEMLERİ
 // ========================
 
 function showHareketModal(cariId, cariAdi) {
@@ -439,7 +489,6 @@ function showHareketModal(cariId, cariAdi) {
     document.getElementById('modalCariAdi').textContent = cariAdi;
     document.getElementById('hareketCariId').value = cariId;
     
-    // Yeni ödeme formu alanlarını temizle
     document.getElementById('odemeTarih').valueAsDate = new Date();
     document.getElementById('odemeSekli').value = ''; 
     document.getElementById('odemeForm').reset();
@@ -464,17 +513,15 @@ function loadHareketler(cariId) {
     fetch(`/api/cari/hareket_liste/${cariId}`) 
         .then(response => response.json())
         .then(data => {
-            currentHareketler = data.data || []; // Hareketleri kaydet
+            currentHareketler = data.data || [];
             tbody.innerHTML = '';
             let sonBakiye = 0;
             
             if (currentHareketler.length > 0) {
-                // Listeyi ters çevirip göster (en yeni en üstte)
                 currentHareketler.slice().reverse().forEach(hareket => {
                     tbody.appendChild(createHareketRow(hareket));
                 });
                 
-                // Son bakiyeyi listenin en sonundaki kayıttan al (oluşturulma sırasına göre son kayıt)
                 sonBakiye = currentHareketler[currentHareketler.length - 1].bakiye;
             } else {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Henüz hareket kaydı yok.</td></tr>';
@@ -486,7 +533,7 @@ function loadHareketler(cariId) {
                 : `${formatCurrencyTurkish(Math.abs(sonBakiye))} (Borç)`;
             bakiyeBilgi.innerHTML = `**Mevcut Bakiye:** <span class="${bakiyeClass}">${bakiyeText}</span>`;
             
-            loadCariList(); // Ana listeyi güncelle
+            loadCariList();
         })
         .catch(error => {
             console.error('Hareket yükleme hatası:', error);
@@ -509,7 +556,6 @@ function createHareketRow(hareket) {
     
     const bakiyeClass = bakiye >= 0 ? 'text-success' : 'text-danger'; 
     
-    // Düzeltme butonu - Sadece manuel ödemeler düzenlenebilir (prim_id yoksa)
     const canEdit = !hareket.prim_id ? 
         `<button onclick="showDuzeltmeModal(${hareket.id})" class="btn btn-sm btn-outline-dark" title="Düzenle/Sil">
             <i class="fas fa-edit"></i>
@@ -578,59 +624,6 @@ function saveCariHareket() {
     });
 }
 
-
-// HIZLI ÖDEME MODALI MANTIKLARI (primler.html ve index.html için)
-function saveHizliOdeme() {
-    const cariId = document.getElementById('hizliCariSelect').value;
-    const tarih = document.getElementById('hizliOdemeTarih').value;
-    const odemeSekli = document.getElementById('hizliOdemeSekli').value; 
-    const tutar = parseFloat(document.getElementById('hizliOdemeTutar').value);
-    const aciklama = document.getElementById('hizliOdemeAciklama').value.trim();
-
-    if (!cariId || !tutar || tutar <= 0 || !odemeSekli || !aciklama) {
-        return showAlert('Lütfen tüm ödeme alanlarını doldurun.', 'warning');
-    }
-
-    const hareketData = {
-        cari_id: parseInt(cariId),
-        hareket_tipi: 'odeme_borc',
-        tarih: tarih,
-        aciklama: `Hızlı Ödeme (${odemeSekli}): ${aciklama}`,
-        alacak: 0,
-        borc: tutar
-    };
-
-    const odemeBtn = document.querySelector('#hizliOdemeForm button[type="submit"]');
-    odemeBtn.disabled = true;
-    odemeBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> İşleniyor...';
-
-    fetch('/api/cari/hareket_ekle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(hareketData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showAlert('Hızlı Ödeme başarıyla kaydedildi!', 'success');
-            const modal = bootstrap.Modal.getInstance(document.getElementById('hizliOdemeModal'));
-            if (modal) modal.hide();
-            loadCariList(); 
-        } else {
-            showAlert('Ödeme kaydetme hatası: ' + (data.error || 'Bilinmeyen hata'), 'danger');
-        }
-    })
-    .catch(error => {
-        showAlert('Sunucu hatası: ' + error.message, 'danger');
-    })
-    .finally(() => {
-        odemeBtn.disabled = false;
-        odemeBtn.innerHTML = '<i class="fas fa-arrow-alt-circle-down"></i> Ödemeyi Kaydet';
-    });
-}
-
-// CARİ HAREKET DÜZENLEME/SİLME MANTIKLARI 
-
 function showDuzeltmeModal(hareketId) {
     const hareket = currentHareketler.find(h => h.id === hareketId);
     
@@ -658,8 +651,7 @@ function showDuzeltmeModal(hareketId) {
         Hareket ID: <strong>#${hareket.id}</strong><br>
         Cari: <strong>${cari ? cari.cari_adi : 'Bilinmeyen'}</strong>
     `;
-    
-    const modalElement = document.getElementById('duzeltmeModal');
+	const modalElement = document.getElementById('duzeltmeModal');
     if (modalElement) {
         const modal = new bootstrap.Modal(modalElement);
         modal.show();
@@ -678,7 +670,6 @@ function saveDüzeltme() {
         return showAlert('Tarih, Alacak ve Borç alanları geçerli olmalıdır.', 'warning');
     }
     
-    // UI Feedback
     const saveBtn = document.querySelector('#duzeltmeModal .btn-warning');
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Kaydediliyor...';
@@ -706,6 +697,10 @@ function saveDüzeltme() {
             showAlert('Düzeltme hatası: ' + (data.error || 'Bilinmeyen hata'), 'danger');
         }
     })
+    .catch(err => {
+        console.error(err);
+        showAlert('Düzeltme sırasında hata oluştu.', 'danger');
+    })
     .finally(() => {
         saveBtn.disabled = false;
         saveBtn.innerHTML = '<i class="fas fa-save"></i> Değişiklikleri Kaydet';
@@ -713,12 +708,11 @@ function saveDüzeltme() {
 }
 
 function deleteHareket() {
-    if (!confirm('Bu ödeme hareketini KALICI OLARAK SİLMEK istediğinizden emin misiniz?')) return;
+    if (!confirm('Bu ödeme hareketini KALİCİ OLARAK SİLMEK istediğinizden emin misiniz?')) return;
     
     const hareketId = document.getElementById('duzeltmeId').value;
     const cariId = document.getElementById('duzeltmeCariId').value;
     
-    // UI Feedback
     const deleteBtn = document.querySelector('#duzeltmeModal .btn-danger');
     deleteBtn.disabled = true;
     deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Siliniyor...';
@@ -739,13 +733,16 @@ function deleteHareket() {
             showAlert('Silme hatası: ' + (data.error || 'Bilinmeyen hata'), 'danger');
         }
     })
+    .catch(err => {
+        console.error(err);
+        showAlert('Silme sırasında hata oluştu.', 'danger');
+    })
     .finally(() => {
         deleteBtn.disabled = false;
         deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Hareketi Sil';
     });
 }
 
-// Cari Ekstre Yazdırma İşlemi
 function printCariEkstre() {
     if (!currentCari || !currentCari.id) return;
 
@@ -755,9 +752,8 @@ function printCariEkstre() {
     }
 }
 
-
 // ========================
-// YARDIMCI FONKSİYONLAR (Aynı Kalacak)
+// YARDIMCI FONKSİYONLAR
 // ========================
 
 function formatDateTurkish(dateString) {
@@ -809,151 +805,5 @@ function showAlert(message, type = 'info') {
     document.body.appendChild(alertDiv);
     setTimeout(() => alertDiv.remove(), 5000);
 }
-// ========================
-// MAAŞ YÖNETİMİ İŞLEMLERİ
-// ========================
-
-function maasListele() {
-    const yil = document.getElementById('filterYil')?.value || "";
-    const ay = document.getElementById('filterAy')?.value || "";
-    const cariGrup = document.getElementById('filterCariGrup')?.value || "";
-    const cariTuru = document.getElementById("filterCariTuru")?.value || "";
-    const altTuru = document.getElementById("filterAltTuru")?.value || "";
-
-    const params = new URLSearchParams();
-    if (yil) params.append('donem_yil', yil);
-    if (ay) params.append('donem_ay', ay);
-    if (cariGrup) params.append('cari_grup', cariGrup);
-    if (cariTuru) params.append('cari_turu', cariTuru);
-    if (altTuru) params.append('alt_turu', altTuru);
-
-    const container = document.getElementById('maasListesi');
-    container.innerHTML = '<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</p>';
-
-    fetch(`/api/personel/maas/liste?${params.toString()}`)
-        .then(r => r.json())
-        .then(data => {
-            if (data.success && data.data.length > 0) {
-                renderMaasListesi(data.data);
-            } else {
-                container.innerHTML = '<p class="text-center text-muted py-4">Bu döneme ait maaş ödemesi bulunamadı</p>';
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            container.innerHTML = '<p class="text-center text-danger py-4">Maaşlar yüklenemedi</p>';
-        });
-}
-
-
-function renderMaasListesi(maaslar) {
-    const container = document.getElementById('maasListesi');
-
-    // Toplamları hesapla
-    let toplamOdenecek = 0;
-    let toplamOdendi = 0;
-
-    maaslar.forEach(m => {
-        toplamOdenecek += parseFloat(m.odenecek_tutar || 0);
-        if (m.odeme_durumu === 'odendi') {
-            toplamOdendi += parseFloat(m.odenecek_tutar || 0);
-        }
-    });
-
-    // Toplam kutusu
-    let toplamHTML = `
-        <div class="alert alert-info d-flex justify-content-between align-items-center mb-3">
-            <div><strong>Toplam Ödenecek (Borç):</strong> ${formatCurrency(toplamOdenecek)}</div>
-            <div><strong>Toplam Ödenmiş (Alacak):</strong> ${formatCurrency(toplamOdendi)}</div>
-            <div><strong>Bekleyen:</strong> ${formatCurrency(toplamOdenecek - toplamOdendi)}</div>
-        </div>
-    `;
-
-    // Tablo
-    let html = '<div class="table-responsive"><table class="table table-hover">';
-    html += '<thead class="table-dark"><tr>';
-    html += '<th>Personel</th>';
-    html += '<th>Dönem</th>';
-    html += '<th>Cari Türü</th>';   // 🔹 yeni
-    html += '<th>Alt Türü</th>';    // 🔹 yeni
-    html += '<th>Net Maaş</th>';
-    html += '<th>Ödenecek</th>';
-    html += '<th>Durum</th>';
-    html += '<th>İşlemler</th>';
-    html += '</tr></thead><tbody>';
-
-    maaslar.forEach(m => {
-        const durum = m.odeme_durumu || 'beklemede';
-        const durumClass = durum === 'odendi' ? 'success' : 'warning';
-        const durumText = durum === 'odendi' ? 'Ödendi' : 'Bekliyor';
-
-        html += '<tr>';
-        html += `<td>${m.ad} ${m.soyad}</td>`;
-        html += `<td>${getAyAdi(m.donem_ay)} ${m.donem_yil}</td>`;
-        html += `<td>${m.cari_turu || '-'}</td>`;   // 🔹 yeni
-        html += `<td>${m.alt_turu || '-'}</td>`;    // 🔹 yeni
-        html += `<td>${formatCurrency(m.net_maas)}</td>`;
-        html += `<td><strong>${formatCurrency(m.odenecek_tutar)}</strong></td>`;
-        html += `<td><span class="badge bg-${durumClass}">${durumText}</span></td>`;
-        html += '<td>';
-        html += `<button class="btn btn-sm btn-outline-info me-1" onclick='maasDetay(${JSON.stringify(m)})'>
-                    <i class="fas fa-info-circle"></i>
-                 </button>`;
-        if (durum === 'beklemede' && m.cari_id) {
-            html += `<a href="/cari_yonetimi" class="btn btn-sm btn-primary me-1">
-                        <i class="fas fa-credit-card"></i>
-                     </a>`;
-        }
-        html += `<button class="btn btn-sm btn-danger" onclick="maasSil(${m.id}, '${m.ad} ${m.soyad}', '${getAyAdi(m.donem_ay)} ${m.donem_yil}')">
-                    <i class="fas fa-trash"></i>
-                 </button>`;
-        html += '</td>';
-        html += '</tr>';
-    });
-
-    html += '</tbody></table></div>';
-
-    // Hem toplam kutusu hem tabloyu ekle
-    container.innerHTML = toplamHTML + html;
-}
-
-
-function loadCariTurleri() {
-    fetch("/api/cari/liste")
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                let turler = new Set();
-                let altTurler = new Set();
-
-                data.data.forEach(cari => {
-                    if (cari.cari_turu) turler.add(cari.cari_turu);
-                    if (cari.alt_turu) altTurler.add(cari.alt_turu);
-                });
-
-                // Cari Türü select doldur
-                const turSelect = document.getElementById("filterCariTuru");
-                turSelect.innerHTML = `<option value="">Tüm Türler</option>`;
-                turler.forEach(tur => {
-                    turSelect.innerHTML += `<option value="${tur}">${tur}</option>`;
-                });
-
-                // Alt Tür select doldur
-                const altTurSelect = document.getElementById("filterAltTuru");
-                altTurSelect.innerHTML = `<option value="">Tüm Alt Türler</option>`;
-                altTurler.forEach(alt => {
-                    altTurSelect.innerHTML += `<option value="${alt}">${alt}</option>`;
-                });
-            }
-        })
-        .catch(err => console.error("Cari türleri yükleme hatası:", err));
-}
-
-function getAyAdi(ay) {
-    const aylar = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-        'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-    return aylar[ay] || ay;
-}
-
 
 console.log('Cari Yönetimi JS tamamen yüklendi');
